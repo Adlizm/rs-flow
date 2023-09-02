@@ -1,20 +1,16 @@
 use rs_flow::prelude::*;
-use rs_flow_macros::Component;
-use serde::Serialize;
-use crate::components::MyGlobal;
+use serde_json::Value;
 
-#[derive(Serialize)]
-#[derive(Component)]
-#[outputs [output1] ]
-pub struct Message {
-    pub message: String
-}
-impl ComponentRunnable<MyGlobal> for MessageComponent<MyGlobal> {
-    fn run(&mut self) -> Result<(), Errors> {
-        let package = Package::new(&self.data);
+pub struct Message;
 
-        self.context()?.send(self.outputs[0], package)?;
+impl BaseComponent for Message {
+    const INPUTS: &'static [InPort] = &[];
+    const OUTPUTS: &'static [OutPort] = &[OutPort { port: 0 }];
+
+    fn run(data: &Value, ctx: &Ctx) -> Result<(), Errors> {
+        let package = Package::new(data);
+
+        ctx.send(Self::OUTPUTS[0], package)?;
         Ok(())
     }
 }
-impl Component<MyGlobal> for MessageComponent<MyGlobal> {}

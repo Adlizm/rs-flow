@@ -1,18 +1,16 @@
 use rs_flow::prelude::*;
-use rs_flow_macros::Component;
-use crate::components::MyGlobal;
+use serde_json::Value;
 
-#[derive(Component)]
-#[inputs  [input1] ]
-pub struct Log {}
-impl ComponentRunnable<MyGlobal> for LogComponent<MyGlobal> {
-    fn run(&mut self) -> Result<(), Errors> {
-        let package = self.context()?.receive(self.inputs[0])?;
-        let global = self.context()?.global()?;
+pub struct Log;
+
+impl BaseComponent for Log {
+    const INPUTS: &'static [InPort] = &[InPort { port: 0 }];
+    const OUTPUTS: &'static [OutPort] = &[];
+
+    fn run(_data: &Value, ctx: &Ctx) -> Result<(), Errors> {
+        let package = ctx.receive(Self::INPUTS[0])?;
 
         println!("{:#}", package.content());
-        println!("{}", global.global_message);
         Ok(())
     }
 }
-impl Component<MyGlobal> for LogComponent<MyGlobal> {}
