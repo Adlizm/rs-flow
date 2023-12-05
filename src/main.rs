@@ -3,7 +3,7 @@ use rs_flow::prelude::*;
 use main::components::log::Log;
 use main::components::message::Message;
 
-fn test() -> Result<(), Errors> {
+async fn run() -> Result<(), Errors> {
     let message = Component::new(
         1,
         Message {
@@ -19,9 +19,10 @@ fn test() -> Result<(), Errors> {
         .add_connection(Connection::new(1, 0, 2, 0))?
         .build()?;
 
-    flow.run()?;
-    return Ok(());
+    flow.run().await
 }
-fn main() {
-    test().unwrap();
+
+#[tokio::main]
+async fn main() {
+    let _ = run().await;
 }

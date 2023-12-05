@@ -95,7 +95,7 @@ impl Flow {
         self.state
     }
 
-    pub fn run(&mut self) -> Result<(), Errors> {
+    pub async fn run(&mut self) -> Result<(), Errors> {
         if self.state == FlowState::Building {
             return Err(Errors::FlowUnreadyToRun);
         }
@@ -120,7 +120,7 @@ impl Flow {
                     .ok_or_else(|| Errors::ComponentNotFound { id })?;
 
                 let ctx = Ctx::new(component.id(), &connections, &queues);
-                component.run(&ctx)?;
+                component.run(&ctx).await?;
             }
             ready_components = self.components_ready_to_run(&queues)?;
         }

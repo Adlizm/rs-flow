@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -7,17 +8,20 @@ use crate::port::{InPort, OutPort};
 
 pub type Id = usize;
 
+#[async_trait]
 pub trait ComponentHandler {
     fn id(&self) -> Id;
     fn inputs(&self) -> Vec<InPort>;
     fn outputs(&self) -> Vec<OutPort>;
-    fn run(&self, ctx: &Ctx) -> Result<(), Errors>;
+    async fn run(&self, ctx: &Ctx) -> Result<(), Errors>;
 }
+
+#[async_trait]
 pub trait BaseComponent: Sized {
     const INPUTS: &'static [InPort];
     const OUTPUTS: &'static [OutPort];
 
-    fn run(&self, ctx: &Ctx) -> Result<(), Errors>;
+    async fn run(&self, ctx: &Ctx) -> Result<(), Errors>;
 }
 
 pub struct Component<T> {
@@ -42,9 +46,10 @@ where
     }
 }
 
+#[async_trait]
 impl<T> ComponentHandler for Component<T>
 where
-    T: BaseComponent,
+    T: BaseComponent + Sync + Send,
 {
     fn id(&self) -> Id {
         self.id
@@ -55,12 +60,14 @@ where
     fn outputs(&self) -> Vec<OutPort> {
         T::OUTPUTS.to_vec()
     }
-    fn run(&self, ctx: &Ctx) -> Result<(), Errors> {
-        self.data.run(ctx)
+    async fn run(&self, ctx: &Ctx) -> Result<(), Errors> {
+        self.data.run(ctx).await
     }
 }
 
 mod test {
+    use async_trait::async_trait;
+
     use crate::prelude::*;
 
     #[derive(Default)]
@@ -68,11 +75,12 @@ mod test {
         pub message: String,
     }
 
+    #[async_trait]
     impl BaseComponent for Test {
         const INPUTS: &'static [InPort] = &[];
         const OUTPUTS: &'static [OutPort] = &[];
 
-        fn run(&self, _ctx: &Ctx) -> Result<(), Errors> {
+        async fn run(&self, _ctx: &Ctx) -> Result<(), Errors> {
             println!("Message: {}", self.message);
             Ok(())
         }

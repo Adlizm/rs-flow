@@ -11,5 +11,5 @@ You can see a example in '/src' folder.
   <li>[ ] Serialize and Deserialize a flow</li>
   <li>[ ] Update errors
   <li>[ ] Set components and ports infos like descriptions e labels</li>
-  <li>[ ] Impl Debug and Display for flow and componets
+  <li>[ ] Impl Debug and Display for flow and components
 </ul>
