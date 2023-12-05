@@ -108,11 +108,6 @@ impl Flow {
         let queues = Arc::new(self.create_queues());
         let connections = Arc::new(self.connections.clone());
 
-        for component in self.components.values_mut() {
-            let context = Ctx::new(component.id(), &connections, &queues);
-            component.set_contex(context);
-        }
-
         //entry points, all components without inputs
         let mut ready_components = self.entry_points();
 
@@ -123,11 +118,9 @@ impl Flow {
                     .components
                     .get(&id)
                     .ok_or_else(|| Errors::ComponentNotFound { id })?;
-                let ctx = component
-                    .get_contex()
-                    .ok_or_else(|| Errors::ContextNotLoaded)?;
 
-                component.run(ctx)?;
+                let ctx = Ctx::new(component.id(), &connections, &queues);
+                component.run(&ctx)?;
             }
             ready_components = self.components_ready_to_run(&queues)?;
         }

@@ -3,9 +3,15 @@ use rs_flow::prelude::*;
 use main::components::log::Log;
 use main::components::message::Message;
 
-fn crate_flow_and_run() -> Result<(), Errors> {
-    let message = Component::<Message>::new(1, "Hello World".into());
-    let log = Component::<Log>::new(2, serde_json::Value::Null);
+fn test() -> Result<(), Errors> {
+    let message = Component::new(
+        1,
+        Message {
+            message: "Hello World!".to_string(),
+        },
+    );
+
+    let log = Component::<Log>::new(2, Log {});
 
     let mut flow = Flow::new();
     flow.add_component(Box::new(message))?
@@ -17,5 +23,5 @@ fn crate_flow_and_run() -> Result<(), Errors> {
     return Ok(());
 }
 fn main() {
-    crate_flow_and_run().unwrap();
+    test().unwrap();
 }
