@@ -7,10 +7,10 @@ pub struct Message {
 
 #[async_trait]
 impl BaseComponent for Message {
-    const INPUTS: &'static [InPort] = &[];
-    const OUTPUTS: &'static [OutPort] = &[OutPort { port: 0 }];
+    const INPUTS: &'static [Port] = &[];
+    const OUTPUTS: &'static [Port] = &[Port { port: 0 }];
 
-    async fn run(&self, ctx: &Ctx) -> Result<(), Errors> {
+    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<(), Errors> {
         let package = Package::new(self.message.clone());
 
         ctx.send(Self::OUTPUTS[0], package)?;

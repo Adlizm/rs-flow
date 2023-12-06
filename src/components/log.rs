@@ -5,10 +5,10 @@ pub struct Log;
 
 #[async_trait]
 impl BaseComponent for Log {
-    const INPUTS: &'static [InPort] = &[InPort { port: 0 }];
-    const OUTPUTS: &'static [OutPort] = &[];
+    const INPUTS: &'static [Port] = &[Port { port: 0 }];
+    const OUTPUTS: &'static [Port] = &[];
 
-    async fn run(&self, ctx: &Ctx) -> Result<(), Errors> {
+    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<(), Errors> {
         let package = ctx.receive(Self::INPUTS[0])?;
 
         println!("{:#}", package.content());

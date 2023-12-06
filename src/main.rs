@@ -13,13 +13,14 @@ async fn run() -> Result<(), Errors> {
 
     let log = Component::<Log>::new(2, Log {});
 
-    let mut flow = Flow::new();
-    flow.add_component(Box::new(message))?
+    Flow::new()
+        .add_component(Box::new(message))?
         .add_component(Box::new(log))?
         .add_connection(Connection::new(1, 0, 2, 0))?
-        .build()?;
+        .run()
+        .await?;
 
-    flow.run().await
+    Ok(())
 }
 
 #[tokio::main]

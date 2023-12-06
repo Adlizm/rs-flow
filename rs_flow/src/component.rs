@@ -2,26 +2,27 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 
+use crate::context::queues::AsyncQueues;
 use crate::context::Ctx;
 use crate::errors::Errors;
-use crate::port::{InPort, OutPort};
+use crate::port::Port;
 
 pub type Id = usize;
 
 #[async_trait]
 pub trait ComponentHandler {
     fn id(&self) -> Id;
-    fn inputs(&self) -> Vec<InPort>;
-    fn outputs(&self) -> Vec<OutPort>;
-    async fn run(&self, ctx: &Ctx) -> Result<(), Errors>;
+    fn inputs(&self) -> Vec<Port>;
+    fn outputs(&self) -> Vec<Port>;
+    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<(), Errors>;
 }
 
 #[async_trait]
 pub trait BaseComponent: Sized {
-    const INPUTS: &'static [InPort];
-    const OUTPUTS: &'static [OutPort];
+    const INPUTS: &'static [Port];
+    const OUTPUTS: &'static [Port];
 
-    async fn run(&self, ctx: &Ctx) -> Result<(), Errors>;
+    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<(), Errors>;
 }
 
 pub struct Component<T> {
@@ -54,13 +55,13 @@ where
     fn id(&self) -> Id {
         self.id
     }
-    fn inputs(&self) -> Vec<InPort> {
+    fn inputs(&self) -> Vec<Port> {
         T::INPUTS.to_vec()
     }
-    fn outputs(&self) -> Vec<OutPort> {
+    fn outputs(&self) -> Vec<Port> {
         T::OUTPUTS.to_vec()
     }
-    async fn run(&self, ctx: &Ctx) -> Result<(), Errors> {
+    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<(), Errors> {
         self.data.run(ctx).await
     }
 }
@@ -68,7 +69,7 @@ where
 mod test {
     use async_trait::async_trait;
 
-    use crate::prelude::*;
+    use crate::{context::queues::AsyncQueues, prelude::*};
 
     #[derive(Default)]
     pub struct Test {
@@ -77,10 +78,10 @@ mod test {
 
     #[async_trait]
     impl BaseComponent for Test {
-        const INPUTS: &'static [InPort] = &[];
-        const OUTPUTS: &'static [OutPort] = &[];
+        const INPUTS: &'static [Port] = &[];
+        const OUTPUTS: &'static [Port] = &[];
 
-        async fn run(&self, _ctx: &Ctx) -> Result<(), Errors> {
+        async fn run(&self, _ctx: &Ctx<AsyncQueues>) -> Result<(), Errors> {
             println!("Message: {}", self.message);
             Ok(())
         }
