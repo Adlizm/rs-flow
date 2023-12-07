@@ -1,6 +1,6 @@
 use std::{
     collections::{HashMap, VecDeque},
-    sync::{Arc, Mutex},
+    sync::Mutex,
 };
 
 use crate::prelude::*;
@@ -14,14 +14,14 @@ pub trait Queues {
     fn has_packages(&self) -> Result<Vec<Point>, Errors>;
 }
 
-pub struct AsyncQueues(HashMap<Point, Arc<Mutex<VecDeque<Package>>>>);
+pub struct AsyncQueues(HashMap<Point, Mutex<VecDeque<Package>>>);
 
 impl Queues for AsyncQueues {
     fn from(connections: &Vec<Connection>) -> Self {
         let mut queues = HashMap::new();
         for in_point in connections.iter().map(Connection::in_point) {
             if !queues.contains_key(&in_point) {
-                queues.insert(in_point.clone(), Arc::new(Mutex::new(VecDeque::new())));
+                queues.insert(in_point.clone(), Mutex::new(VecDeque::new()));
             }
         }
 

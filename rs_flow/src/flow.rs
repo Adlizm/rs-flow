@@ -67,11 +67,7 @@ impl Flow {
         let part = ContextPart::from(&self.connections);
 
         //entry points, all components without inputs
-        let mut ready_components = self
-            .components
-            .iter()
-            .filter(|component| component.inputs().is_empty())
-            .collect::<Vec<_>>();
+        let mut ready_components = self.entry_points();
 
         while !ready_components.is_empty() {
             for component in ready_components {
@@ -80,24 +76,34 @@ impl Flow {
             }
 
             let has_packages = part.queues.has_packages()?;
-            ready_components = self
-                .components
-                .iter()
-                .filter(|component| {
-                    if component.inputs().is_empty() {
-                        return false;
-                    } else {
-                        let id = component.id();
-                        let ready = component
-                            .inputs()
-                            .iter()
-                            .all(|port| has_packages.contains(&Point::new(id, port.port)));
-                        ready
-                    }
-                })
-                .collect();
+            ready_components = self.ready_components(has_packages);
         }
 
         Ok(())
+    }
+
+    fn entry_points(&self) -> Vec<&Box<dyn ComponentHandler>> {
+        self.components
+            .iter()
+            .filter(|component| component.inputs().is_empty())
+            .collect()
+    }
+    fn ready_components(&self, has_packages: Vec<Point>) -> Vec<&Box<dyn ComponentHandler>> {
+        self.components
+            .iter()
+            .filter(|component| {
+                let inputs = component.inputs();
+                if inputs.is_empty() {
+                    // entry points, only once run
+                    return false;
+                } else {
+                    let id = component.id();
+                    let ready = inputs
+                        .iter()
+                        .all(|port| has_packages.contains(&Point::new(id, port.port)));
+                    ready
+                }
+            })
+            .collect()
     }
 }

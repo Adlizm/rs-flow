@@ -12,6 +12,7 @@ impl BaseComponent for Log {
         let package = ctx.receive(Self::INPUTS[0])?;
 
         println!("{:#}", package.content());
+
         Ok(())
     }
 }
