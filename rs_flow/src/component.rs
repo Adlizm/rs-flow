@@ -4,7 +4,7 @@ use serde_json::Value;
 
 use crate::context::queues::AsyncQueues;
 use crate::context::Ctx;
-use crate::errors::Errors;
+use crate::errors::Result;
 use crate::port::Port;
 
 pub type Id = usize;
@@ -14,7 +14,7 @@ pub trait ComponentHandler {
     fn id(&self) -> Id;
     fn inputs(&self) -> Vec<Port>;
     fn outputs(&self) -> Vec<Port>;
-    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<(), Errors>;
+    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<()>;
 }
 
 #[async_trait]
@@ -22,7 +22,7 @@ pub trait BaseComponent: Sized {
     const INPUTS: &'static [Port];
     const OUTPUTS: &'static [Port];
 
-    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<(), Errors>;
+    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<()>;
 }
 
 pub struct Component<T> {
@@ -39,7 +39,7 @@ impl<T> Component<T>
 where
     T: for<'a> Deserialize<'a>,
 {
-    pub fn from(id: Id, data: Value) -> Result<Self, serde_json::Error> {
+    pub fn from(id: Id, data: Value) -> Result<Self> {
         Ok(Self {
             id,
             data: serde_json::from_value(data)?,
@@ -61,7 +61,7 @@ where
     fn outputs(&self) -> Vec<Port> {
         T::OUTPUTS.to_vec()
     }
-    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<(), Errors> {
+    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<()> {
         self.data.run(ctx).await
     }
 }
@@ -81,7 +81,7 @@ mod test {
         const INPUTS: &'static [Port] = &[];
         const OUTPUTS: &'static [Port] = &[];
 
-        async fn run(&self, _ctx: &Ctx<AsyncQueues>) -> Result<(), Errors> {
+        async fn run(&self, _ctx: &Ctx<AsyncQueues>) -> Result<()> {
             println!("Message: {}", self.message);
             Ok(())
         }

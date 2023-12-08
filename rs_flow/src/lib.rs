@@ -6,7 +6,7 @@ pub mod prelude {
     pub use crate::port::*;
 
     pub use crate::context::*;
-    pub use crate::errors::Errors;
+    pub use crate::errors::{Errors, Result};
 }
 
 pub mod component;

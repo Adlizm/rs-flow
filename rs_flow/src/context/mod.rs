@@ -4,7 +4,7 @@ use connection::Connection;
 
 use crate::component::Id;
 use crate::connection::{self, Point};
-use crate::errors::Errors;
+use crate::errors::{Errors, Result};
 use crate::package::Package;
 use crate::prelude::Port;
 
@@ -43,12 +43,12 @@ where
         }
     }
 
-    pub fn receive(&self, in_port: Port) -> Result<Package, Errors> {
+    pub fn receive(&self, in_port: Port) -> Result<Package> {
         let in_point = Point::new(self.id, in_port.port);
         self.part.queues.receive(in_point)
     }
 
-    pub fn send(&self, out_port: Port, package: Package) -> Result<(), Errors> {
+    pub fn send(&self, out_port: Port, package: Package) -> Result<()> {
         let out_point = Point::new(self.id, out_port.port);
 
         let in_points: Vec<Point> = self
@@ -60,7 +60,11 @@ where
             .collect();
 
         if in_points.is_empty() {
-            return Err(Errors::OutPortNotConnected(out_point));
+            return Err(Errors::OutPortNotConnected {
+                component: self.id,
+                out_port: out_port.port,
+            }
+            .into());
         }
 
         self.part.queues.send(in_points, package)

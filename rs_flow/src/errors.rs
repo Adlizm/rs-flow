@@ -1,37 +1,29 @@
-use std::error::Error;
+use std::error;
 use std::fmt::Display;
 
 use crate::component::Id;
-use crate::connection::{Connection, Point};
+use crate::connection::Connection;
+use crate::prelude::PortId;
 
-#[derive(Debug, Clone)]
+pub type Result<T> = std::result::Result<T, Box<dyn error::Error>>;
+
+#[derive(Debug)]
 pub enum Errors {
     ComponentAlreadyExist { id: Id },
     ComponentNotFound { id: Id },
-    InPortNotFound(Point),
-    OutPortNotFound(Point),
+
     ConnectionAlreadyExist(Connection),
 
-    OutPortNotConnected(Point),
+    InPortNotFound { component: Id, in_port: PortId },
+    OutPortNotFound { component: Id, out_port: PortId },
+    OutPortNotConnected { component: Id, out_port: PortId },
 
-    CannotAccessQueue(Point),
-    CannotResetQueue(Point),
-    QueueNotCreated(Point),
-    EmptyQueue(Point),
+    CannotAccessQueue { component: Id, in_port: PortId },
+    QueueNotCreated { component: Id, in_port: PortId },
+    EmptyQueue { component: Id, in_port: PortId },
 
-    ContextNotLoaded,
-    CannotLoadGlobal,
     CannotSendPackage,
     CannotRecievePackage,
-    CannotReadState,
-    CannotUpdateState,
-
-    FlowNotRunning,
-    FlowUnreadyToRun,
-    FlowAlreadyBuilded,
-    FlowAlreadyRunning,
-
-    NotImplemented,
 }
 
 impl Display for Errors {
@@ -39,4 +31,5 @@ impl Display for Errors {
         f.write_fmt(format_args!("{:?}", self))
     }
 }
-impl Error for Errors {}
+
+impl error::Error for Errors {}

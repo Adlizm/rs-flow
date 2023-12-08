@@ -2,7 +2,7 @@ use crate::component::ComponentHandler;
 use crate::connection::Connection;
 use crate::context::queues::Queues;
 use crate::context::{ContextPart, Ctx};
-use crate::errors::Errors;
+use crate::errors::{Errors, Result};
 use crate::prelude::Point;
 
 pub struct Flow {
@@ -18,17 +18,17 @@ impl Flow {
         }
     }
 
-    pub fn add_component(mut self, component: Box<dyn ComponentHandler>) -> Result<Self, Errors> {
+    pub fn add_component(mut self, component: Box<dyn ComponentHandler>) -> Result<Self> {
         if self.components.iter().any(|c| c.id() == component.id()) {
-            return Err(Errors::ComponentAlreadyExist { id: component.id() });
+            return Err(Errors::ComponentAlreadyExist { id: component.id() }.into());
         }
         self.components.push(component);
         Ok(self)
     }
 
-    pub fn add_connection(mut self, connection: Connection) -> Result<Self, Errors> {
+    pub fn add_connection(mut self, connection: Connection) -> Result<Self> {
         if self.connections.iter().any(|conn| conn.eq(&connection)) {
-            return Err(Errors::ConnectionAlreadyExist(connection));
+            return Err(Errors::ConnectionAlreadyExist(connection).into());
         }
 
         let from = self.components.iter().find(|c| c.id() == connection.from);
@@ -38,12 +38,17 @@ impl Flow {
                 .iter()
                 .any(|port| port.port == connection.out_port)
             {
-                return Err(Errors::OutPortNotFound(connection.out_point()));
+                return Err(Errors::OutPortNotFound {
+                    component: connection.from,
+                    out_port: connection.out_port,
+                }
+                .into());
             }
         } else {
             return Err(Errors::ComponentNotFound {
                 id: connection.from,
-            });
+            }
+            .into());
         }
 
         let to = self.components.iter().find(|c| c.id() == connection.to);
@@ -53,17 +58,21 @@ impl Flow {
                 .iter()
                 .any(|port| port.port == connection.in_port)
             {
-                return Err(Errors::InPortNotFound(connection.in_point()));
+                return Err(Errors::InPortNotFound {
+                    component: connection.from,
+                    in_port: connection.in_port,
+                }
+                .into());
             }
         } else {
-            return Err(Errors::ComponentNotFound { id: connection.to });
+            return Err(Errors::ComponentNotFound { id: connection.to }.into());
         }
 
         self.connections.push(connection);
         Ok(self)
     }
 
-    pub async fn run(&mut self) -> Result<(), Errors> {
+    pub async fn run(&mut self) -> Result<()> {
         let part = ContextPart::from(&self.connections);
 
         //entry points, all components without inputs
