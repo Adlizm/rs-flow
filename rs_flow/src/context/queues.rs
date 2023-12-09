@@ -3,10 +3,14 @@ use std::{
     sync::Mutex,
 };
 
-use crate::prelude::*;
+use crate::{
+    package::Package,
+    connection::{Connection, Point},
+    errors::{Result, Errors}
+};
 
 pub trait Queues {
-    fn from(connections: &Vec<Connection>) -> Self;
+    fn from_connections(connections: &Vec<Connection>) -> Self;
 
     fn receive(&self, in_point: Point) -> Result<Package>;
     fn send(&self, in_points: Vec<Point>, package: Package) -> Result<()>;
@@ -17,7 +21,7 @@ pub trait Queues {
 pub struct AsyncQueues(HashMap<Point, Mutex<VecDeque<Package>>>);
 
 impl Queues for AsyncQueues {
-    fn from(connections: &Vec<Connection>) -> Self {
+    fn from_connections(connections: &Vec<Connection>) -> Self {
         let mut queues = HashMap::new();
         for in_point in connections.iter().map(Connection::in_point) {
             if !queues.contains_key(&in_point) {

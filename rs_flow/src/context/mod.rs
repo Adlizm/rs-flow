@@ -8,46 +8,29 @@ use crate::errors::{Errors, Result};
 use crate::package::Package;
 use crate::prelude::Port;
 
+use self::queues::Queues;
+use self::global::Global;
+
 pub mod queues;
-pub use queues::*;
-pub(crate) struct ContextPart<T: queues::Queues> {
-    connections: Vec<Connection>,
-    pub(crate) queues: T,
-}
+pub mod global;
+pub mod part;
 
-impl<T> ContextPart<T>
-where
-    T: queues::Queues,
-{
-    pub(crate) fn from(connections: &Vec<Connection>) -> Arc<Self> {
-        Arc::new(Self {
-            connections: connections.to_vec(),
-            queues: T::from(connections),
-        })
-    }
-}
-
-pub struct Ctx<T: queues::Queues> {
+pub struct CtxAsync<GD> {
     id: Id,
-    part: Arc<ContextPart<T>>,
+    part: Arc<part::ContextPartAsync<GD>>,
 }
 
-impl<T> Ctx<T>
-where
-    T: queues::Queues,
-{
-    pub(crate) fn from(id: Id, part: &Arc<ContextPart<T>>) -> Self {
+impl<GD> CtxAsync<GD> {
+    pub(crate) fn from(id: Id, part: &Arc<part::ContextPartAsync<GD>>) -> Self {
         Self {
             id,
             part: part.clone(),
         }
     }
-
     pub fn receive(&self, in_port: Port) -> Result<Package> {
         let in_point = Point::new(self.id, in_port.port);
         self.part.queues.receive(in_point)
     }
-
     pub fn send(&self, out_port: Port, package: Package) -> Result<()> {
         let out_point = Point::new(self.id, out_port.port);
 
@@ -69,4 +52,8 @@ where
 
         self.part.queues.send(in_points, package)
     }
+    pub fn with_global<R>(&self,  call: impl FnOnce(&mut GD) -> R) -> Result<R> {
+        self.part.global.with_global(call)
+    }
+
 }

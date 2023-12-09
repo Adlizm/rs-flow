@@ -1,16 +1,21 @@
 use crate::component::ComponentHandler;
 use crate::connection::Connection;
+use crate::context::CtxAsync;
 use crate::context::queues::Queues;
-use crate::context::{ContextPart, Ctx};
+use crate::context::part::ContextPartAsync;
 use crate::errors::{Errors, Result};
-use crate::prelude::Point;
+use crate::prelude::{Point, Global};
 
-pub struct Flow {
-    components: Vec<Box<dyn ComponentHandler>>,
+pub struct Flow<GD> 
+    where GD: Sync + Send
+{
+    components: Vec<Box<dyn ComponentHandler<Global = GD>>>,
     connections: Vec<Connection>,
 }
 
-impl Flow {
+impl<GD> Flow<GD> 
+    where GD: Sync + Send + Clone
+{
     pub fn new() -> Self {
         Self {
             components: Vec::new(),
@@ -18,7 +23,7 @@ impl Flow {
         }
     }
 
-    pub fn add_component(mut self, component: Box<dyn ComponentHandler>) -> Result<Self> {
+    pub fn add_component(mut self, component: Box<dyn ComponentHandler<Global = GD>>) -> Result<Self> {
         if self.components.iter().any(|c| c.id() == component.id()) {
             return Err(Errors::ComponentAlreadyExist { id: component.id() }.into());
         }
@@ -72,32 +77,33 @@ impl Flow {
         Ok(self)
     }
 
-    pub async fn run(&mut self) -> Result<()> {
-        let part = ContextPart::from(&self.connections);
+    pub async fn run(&mut self, global: GD) -> Result<GD> {
+        let part = ContextPartAsync::from(&self.connections, global);
 
         //entry points, all components without inputs
         let mut ready_components = self.entry_points();
 
         while !ready_components.is_empty() {
             for component in ready_components {
-                let ctx = Ctx::from(component.id(), &part);
+                let ctx = CtxAsync::from(component.id(), &part);
                 component.run(&ctx).await?;
             }
 
             let has_packages = part.queues.has_packages()?;
             ready_components = self.ready_components(has_packages);
         }
-
-        Ok(())
+        
+        let global = part.global.with_global(|global| global.clone())?;
+        Ok(global)
     }
 
-    fn entry_points(&self) -> Vec<&Box<dyn ComponentHandler>> {
+    fn entry_points(&self) -> Vec<&Box<dyn ComponentHandler<Global = GD>>> {
         self.components
             .iter()
             .filter(|component| component.inputs().is_empty())
             .collect()
     }
-    fn ready_components(&self, has_packages: Vec<Point>) -> Vec<&Box<dyn ComponentHandler>> {
+    fn ready_components(&self, has_packages: Vec<Point>) -> Vec<&Box<dyn ComponentHandler<Global = GD>>> {
         self.components
             .iter()
             .filter(|component| {

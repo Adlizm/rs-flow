@@ -24,6 +24,8 @@ pub enum Errors {
 
     CannotSendPackage,
     CannotRecievePackage,
+
+    CannotAccessGlobal,
 }
 
 impl Display for Errors {

@@ -1,3 +1,4 @@
+use main::components::MyGlobal;
 use rs_flow::prelude::*;
 
 use main::components::log::Log;
@@ -17,9 +18,9 @@ async fn run() -> Result<()> {
         .add_component(Box::new(message))?
         .add_component(Box::new(log))?
         .add_connection(Connection::new(1, 0, 2, 0))?
-        .run()
+        .run(MyGlobal {count: 0})
         .await?;
-
+    
     Ok(())
 }
 

@@ -5,7 +5,7 @@ pub mod prelude {
     pub use crate::package::Package;
     pub use crate::port::*;
 
-    pub use crate::context::*;
+    pub use crate::context::{CtxAsync, queues::Queues, global::Global };
     pub use crate::errors::{Errors, Result};
 }
 

@@ -2,29 +2,32 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::context::queues::AsyncQueues;
-use crate::context::Ctx;
+use crate::context::CtxAsync;
 use crate::errors::Result;
 use crate::port::Port;
+
 
 pub type Id = usize;
 
 #[async_trait]
 pub trait ComponentHandler {
+    type Global: Send + Sync;
+
     fn id(&self) -> Id;
     fn inputs(&self) -> Vec<Port>;
     fn outputs(&self) -> Vec<Port>;
-    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<()>;
+    async fn run(&self, ctx: &CtxAsync<Self::Global>) -> Result<()>;
 }
 
 #[async_trait]
 pub trait BaseComponent: Sized {
+    type Global: Send + Sync;
+
     const INPUTS: &'static [Port];
     const OUTPUTS: &'static [Port];
 
-    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<()>;
+    async fn run(&self, ctx: &CtxAsync<Self::Global>) -> Result<()>;
 }
-
 pub struct Component<T> {
     id: Id,
     data: T,
@@ -48,46 +51,22 @@ where
 }
 
 #[async_trait]
-impl<T> ComponentHandler for Component<T>
+impl<CD> ComponentHandler for Component<CD>
 where
-    T: BaseComponent + Sync + Send,
+    CD: BaseComponent + Sync + Send,
 {
+    type Global = CD::Global;
+
     fn id(&self) -> Id {
         self.id
     }
     fn inputs(&self) -> Vec<Port> {
-        T::INPUTS.to_vec()
+        CD::INPUTS.to_vec()
     }
     fn outputs(&self) -> Vec<Port> {
-        T::OUTPUTS.to_vec()
+        CD::OUTPUTS.to_vec()
     }
-    async fn run(&self, ctx: &Ctx<AsyncQueues>) -> Result<()> {
+    async fn run(&self, ctx: &CtxAsync<Self::Global>) -> Result<()> {
         self.data.run(ctx).await
-    }
-}
-
-mod test {
-    use async_trait::async_trait;
-
-    use crate::{context::queues::AsyncQueues, prelude::*};
-
-    #[derive(Default)]
-    pub struct Test {
-        pub message: String,
-    }
-
-    #[async_trait]
-    impl BaseComponent for Test {
-        const INPUTS: &'static [Port] = &[];
-        const OUTPUTS: &'static [Port] = &[];
-
-        async fn run(&self, _ctx: &Ctx<AsyncQueues>) -> Result<()> {
-            println!("Message: {}", self.message);
-            Ok(())
-        }
-    }
-
-    fn _main() {
-        let _component = Component::new(0, Test::default());
     }
 }
