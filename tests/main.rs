@@ -1,10 +1,15 @@
-use main::components::MyGlobal;
 use rs_flow::prelude::*;
 
-use main::components::log::Log;
-use main::components::message::Message;
+pub mod components;
 
-async fn run() -> Result<()> {
+use components::{
+    MyGlobal,
+    log::Log,
+    message::Message
+};
+
+#[tokio::test]
+async fn construct() -> Result<()> {
     let message = Component::new(
         1,
         Message {
@@ -22,9 +27,4 @@ async fn run() -> Result<()> {
         .await?;
     
     Ok(())
-}
-
-#[tokio::main]
-async fn main() {
-    let _ = run().await;
 }

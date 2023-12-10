@@ -1,12 +1,13 @@
 [package]
-name = "main"
+name = "rs_flow"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rs_flow = { path = "rs_flow" }
-
-async-trait = "0.1.74"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = "1.0.145"
 serde_json = "1.0"
+async-trait = "0.1.74"
+
+
+[dev-dependencies]
+tokio = { version = "1.35.0", features = ["full"] }
