@@ -27,11 +27,11 @@ impl<GD> CtxAsync<GD> {
             part: part.clone(),
         }
     }
-    pub fn receive(&self, in_port: Port) -> Result<Package> {
+    pub fn receive(&self, in_port: &Port) -> Result<Package> {
         let in_point = Point::new(self.id, in_port.port);
         self.part.queues.receive(in_point)
     }
-    pub fn send(&self, out_port: Port, package: Package) -> Result<()> {
+    pub fn send(&self, out_port: &Port, package: Package) -> Result<()> {
         let out_point = Point::new(self.id, out_port.port);
 
         let in_points: Vec<Point> = self

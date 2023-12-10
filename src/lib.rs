@@ -1,12 +1,13 @@
 pub mod prelude {
     pub use crate::component::*;
-    pub use crate::connection::*;
-    pub use crate::flow::*;
+    pub use crate::connection::Connection;
+    pub use crate::flow::Flow;
     pub use crate::package::Package;
-    pub use crate::port::*;
+    pub use crate::port::Port;
 
-    pub use crate::context::{CtxAsync, queues::Queues, global::Global };
+    pub use crate::context::CtxAsync;
     pub use crate::errors::{Errors, Result};
+    pub use async_trait::async_trait;
 }
 
 pub mod component;

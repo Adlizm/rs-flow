@@ -17,7 +17,7 @@ impl BaseComponent for Message {
     async fn run(&self, ctx: &CtxAsync<Self::Global>) -> Result<()> {
         let package = Package::new(self.message.clone());
 
-        ctx.send(Self::OUTPUTS[0], package)?;
+        ctx.send(&Self::OUTPUTS[0], package)?;
         Ok(())
     }
 }

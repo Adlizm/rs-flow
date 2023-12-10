@@ -13,7 +13,7 @@ impl BaseComponent for Log {
     const OUTPUTS: &'static [Port] = &[];
 
     async fn run(&self, ctx: &CtxAsync<Self::Global>) -> Result<()> {
-        let package = ctx.receive(Self::INPUTS[0])?;
+        let package = ctx.receive(&Self::INPUTS[0])?;
 
         println!("{:#}", package.content());
 

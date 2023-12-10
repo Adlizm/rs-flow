@@ -1,10 +1,10 @@
 use crate::component::ComponentHandler;
-use crate::connection::Connection;
+use crate::connection::{Point, Connection};
 use crate::context::CtxAsync;
 use crate::context::queues::Queues;
+use crate::context::global::Global;
 use crate::context::part::ContextPartAsync;
 use crate::errors::{Errors, Result};
-use crate::prelude::{Point, Global};
 
 pub struct Flow<GD> 
     where GD: Sync + Send
@@ -77,7 +77,7 @@ impl<GD> Flow<GD>
         Ok(self)
     }
 
-    pub async fn run(&mut self, global: GD) -> Result<GD> {
+    pub async fn run(&self, global: GD) -> Result<GD> {
         let part = ContextPartAsync::from(&self.connections, global);
 
         //entry points, all components without inputs

@@ -1,6 +1,8 @@
+use serde::Serialize;
+
 pub type PortId = u16;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Port {
     pub port: PortId,
     pub label: Option<&'static str>,

@@ -1,7 +1,9 @@
+use serde::{Serialize, Deserialize};
+
 use crate::component::Id;
 use crate::port::PortId;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub struct Connection {
     pub from: Id,
     pub out_port: PortId,
@@ -27,7 +29,7 @@ impl Point {
 }
 
 impl Connection {
-    pub fn new(from: Id, out_port: PortId, to: Id, in_port: PortId) -> Self {
+    pub const fn new(from: Id, out_port: PortId, to: Id, in_port: PortId) -> Self {
         Self {
             from,
             out_port,
