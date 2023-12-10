@@ -1,7 +1,8 @@
 [package]
-name = "rs_flow"
+name = "rs-flow"
 version = "0.1.0"
 edition = "2021"
+authors = ["Adlizm"]
 repository = "https://github.com/Adlizm/rs-flow"
 keywords = ["flow", "components"]
 description = "Base64 encode, decode, escape and unescape for URL applications."
