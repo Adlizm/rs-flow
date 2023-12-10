@@ -7,11 +7,12 @@ use crate::context::part::ContextPartAsync;
 use crate::errors::{Errors, Result};
 
 pub struct Flow<GD> 
-    where GD: Sync + Send
+    where GD: Sync + Send + Clone
 {
     components: Vec<Box<dyn ComponentHandler<Global = GD>>>,
     connections: Vec<Connection>,
 }
+
 
 impl<GD> Flow<GD> 
     where GD: Sync + Send + Clone
@@ -76,6 +77,7 @@ impl<GD> Flow<GD>
         self.connections.push(connection);
         Ok(self)
     }
+
 
     pub async fn run(&self, global: GD) -> Result<GD> {
         let part = ContextPartAsync::from(&self.connections, global);

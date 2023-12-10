@@ -5,7 +5,8 @@ use crate::component::Id;
 use crate::connection::Connection;
 use crate::port::PortId;
 
-pub type Result<T> = std::result::Result<T, Box<dyn error::Error>>;
+
+pub type Result<T> = std::result::Result<T, Box<dyn error::Error + Send + Sync>>;
 
 #[derive(Debug)]
 pub enum Errors {

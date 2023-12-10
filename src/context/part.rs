@@ -4,13 +4,15 @@ use crate::connection::Connection;
 
 use super::{queues::{AsyncQueues, Queues}, global::{GlobalAsync, Global}};
 
-pub(crate) struct ContextPartAsync<GD> {
+pub(crate) struct ContextPartAsync<GD: Send + Sync > {
     pub(crate) connections: Vec<Connection>,
     pub(crate) queues: AsyncQueues,
     pub(crate) global: GlobalAsync<GD>
 }
 
-impl<GD> ContextPartAsync<GD> {
+impl<GD> ContextPartAsync<GD> 
+    where GD: Send + Sync  
+{
     pub(crate) fn from(connections: &Vec<Connection>, global: GD) -> Arc<Self> {
         Arc::new(Self {
             connections: connections.to_vec(),

@@ -10,7 +10,7 @@ use crate::port::Port;
 pub type Id = usize;
 
 #[async_trait]
-pub trait ComponentHandler {
+pub trait ComponentHandler: Send + Sync {
     type Global: Send + Sync;
 
     fn id(&self) -> Id;
@@ -20,7 +20,7 @@ pub trait ComponentHandler {
 }
 
 #[async_trait]
-pub trait BaseComponent: Sized {
+pub trait BaseComponent: Send + Sync {
     type Global: Send + Sync;
 
     const INPUTS: &'static [Port];

@@ -28,3 +28,28 @@ async fn construct() -> Result<()> {
     
     Ok(())
 }
+
+mod tests {
+    use super::Flow;
+
+    fn is_send<T: Send>(_: T) {}
+    fn is_sync<T: Sync>(_: T) {}
+
+    #[derive(Clone)]
+    pub struct Global;
+
+    #[test] 
+    fn main() {
+        let flow = Flow::<Global>::new();
+
+        is_send(Flow::<Global>::run);
+        is_sync(Flow::<Global>::run);
+
+        is_send(&flow);
+        is_sync(&flow);
+
+        is_send(flow.run(Global{}));
+        //is_sync(flow.run(Global{})); // Fails
+        
+    }
+}

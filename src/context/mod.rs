@@ -15,12 +15,14 @@ pub mod queues;
 pub mod global;
 pub mod part;
 
-pub struct CtxAsync<GD> {
+pub struct CtxAsync<GD: Send + Sync> {
     id: Id,
     part: Arc<part::ContextPartAsync<GD>>,
 }
 
-impl<GD> CtxAsync<GD> {
+impl<GD> CtxAsync<GD> 
+    where GD: Send + Sync 
+{
     pub(crate) fn from(id: Id, part: &Arc<part::ContextPartAsync<GD>>) -> Self {
         Self {
             id,

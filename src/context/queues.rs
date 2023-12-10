@@ -9,7 +9,7 @@ use crate::{
     errors::{Result, Errors}
 };
 
-pub trait Queues {
+pub trait Queues: Send + Sync  {
     fn from_connections(connections: &Vec<Connection>) -> Self;
 
     fn receive(&self, in_point: Point) -> Result<Package>;
