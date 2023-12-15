@@ -9,6 +9,7 @@ pub struct Log;
 impl BaseComponent for Log {
     type Global = MyGlobal;
 
+    const DESCRIPTION: &'static str = "Print package recived";
     const INPUTS: &'static [Port] = &[Port::new(0)];
     const OUTPUTS: &'static [Port] = &[];
 

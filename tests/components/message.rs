@@ -11,6 +11,7 @@ pub struct Message {
 impl BaseComponent for Message {
     type Global = MyGlobal;
     
+    const DESCRIPTION: &'static str = "Send a package with message";
     const INPUTS: &'static [Port] = &[];
     const OUTPUTS: &'static [Port] = &[Port::from(0, "Message", "Message to Send")];
 

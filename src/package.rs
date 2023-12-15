@@ -12,7 +12,7 @@ impl Package {
         Self { content: value }
     }
 
-    pub fn content(&self) -> &Value {
-        &self.content
+    pub fn content(self) -> Value {
+        self.content
     }
 }

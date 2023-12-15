@@ -25,6 +25,7 @@ pub trait BaseComponent: Send + Sync {
 
     const INPUTS: &'static [Port];
     const OUTPUTS: &'static [Port];
+    const DESCRIPTION: &'static str;
 
     async fn run(&self, ctx: &CtxAsync<Self::Global>) -> Result<()>;
 }
