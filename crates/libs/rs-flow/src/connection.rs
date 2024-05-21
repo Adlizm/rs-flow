@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 
 use crate::component::Id;
-use crate::port::PortId;
+use crate::ports::PortId;
 
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub struct Connection {

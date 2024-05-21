@@ -1,7 +1,7 @@
 use serde::Serialize;
 use serde_json::{self, Value, };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Package {
     content: Value
 }

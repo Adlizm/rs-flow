@@ -1,21 +1,13 @@
-[package]
-name = "rs-flow"
-version = "0.1.2"
-edition = "2021"
-authors = ["Adlizm"]
-repository = "https://github.com/Adlizm/rs-flow"
-keywords = ["flow", "components"]
-description = "Base64 encode, decode, escape and unescape for URL applications."
-license = "MIT"
-include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
+[workspace.lints.rust]
+unsafe_code = "forbid"
 
-[dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-async-trait = { version = "0.1.73" }
+[workspace]
+resolver = "2"
+members = [
+    # -- Libraries
+    "crates/libs/rs-flow",          # core.
+    "crates/libs/rs-flow-macros",   # macros.
 
-[dev-dependencies]
-tokio = { version = "1.35.0", features = ["full"] }
-
-[features]
-default = []
+    # -- Examples
+    "crates/examples/simple-case",
+]

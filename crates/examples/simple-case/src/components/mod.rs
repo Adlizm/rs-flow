@@ -1,7 +1,7 @@
 pub mod log;
 pub mod message;
 
-#[derive(Clone)]
+#[derive(Debug)]
 pub struct MyGlobal {
     pub count: i32,
 }

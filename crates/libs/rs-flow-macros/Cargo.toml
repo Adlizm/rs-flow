@@ -1,0 +1,18 @@
+[package]
+name = "rs-flow-macros"
+version = "0.1.0"
+edition = "2021"
+authors = ["Adlizm"]
+keywords = ["flow", "macros"]
+description = "Macros to help developement of components from 'rs-flows' lib"
+license = "MIT"
+
+[lints]
+workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "1.0"
+quote = "1.0"

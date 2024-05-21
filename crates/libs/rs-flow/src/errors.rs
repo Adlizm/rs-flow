@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use crate::component::Id;
 use crate::connection::Connection;
-use crate::port::PortId;
+use crate::ports::PortId;
 
 
 pub type Result<T> = std::result::Result<T, Box<dyn error::Error + Send + Sync>>;

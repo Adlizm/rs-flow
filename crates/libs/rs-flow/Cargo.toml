@@ -1,0 +1,19 @@
+[package]
+name = "rs-flow"
+version = "0.2.0"
+edition = "2021"
+authors = ["Adlizm"]
+keywords = ["flow", "components"]
+description = "Create flows to execute based in components created and yours connections"
+license = "MIT"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+async-trait = { version = "0.1.73" }
+
+[dev-dependencies]
+tokio = { version = "1.35.0", features = ["full"] }

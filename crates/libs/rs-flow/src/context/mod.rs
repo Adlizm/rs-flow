@@ -6,35 +6,35 @@ use crate::component::Id;
 use crate::connection::{self, Point};
 use crate::errors::{Errors, Result};
 use crate::package::Package;
-use crate::prelude::Port;
+use crate::ports::PortId;
 
-use self::queues::Queues;
-use self::global::Global;
 
 pub mod queues;
 pub mod global;
 pub mod part;
 
-pub struct CtxAsync<GD: Send + Sync> {
+pub struct Ctx<GD: Send + Sync> {
     id: Id,
-    part: Arc<part::ContextPartAsync<GD>>,
+    part: Arc<part::ContextPart<GD>>,
 }
 
-impl<GD> CtxAsync<GD> 
-    where GD: Send + Sync 
+impl<GD> Ctx<GD> 
+    where GD: Send + Sync + 'static
 {
-    pub(crate) fn from(id: Id, part: &Arc<part::ContextPartAsync<GD>>) -> Self {
+    pub(crate) fn from(id: Id, part: &Arc<part::ContextPart<GD>>) -> Self {
         Self {
             id,
             part: part.clone(),
         }
     }
-    pub fn receive(&self, in_port: &Port) -> Result<Package> {
-        let in_point = Point::new(self.id, in_port.port);
+    
+    pub fn receive(&self, in_port: PortId) -> Result<Option<Package>> {
+        let in_point = Point::new(self.id, in_port);
         self.part.queues.receive(in_point)
     }
-    pub fn send(&self, out_port: &Port, package: Package) -> Result<()> {
-        let out_point = Point::new(self.id, out_port.port);
+    
+    pub fn send(&self, out_port: PortId, package: Package) -> Result<()> {
+        let out_point = Point::new(self.id, out_port);
 
         let in_points: Vec<Point> = self
             .part
@@ -47,15 +47,21 @@ impl<GD> CtxAsync<GD>
         if in_points.is_empty() {
             return Err(Errors::OutPortNotConnected {
                 component: self.id,
-                out_port: out_port.port,
+                out_port: out_port,
             }
             .into());
         }
 
         self.part.queues.send(in_points, package)
     }
-    pub fn with_global<R>(&self,  call: impl FnOnce(&mut GD) -> R) -> Result<R> {
+    
+
+    pub fn with_global<R>(&self, call: impl FnOnce(&GD) -> R) -> Result<R> {
         self.part.global.with_global(call)
+    }
+    
+    pub fn with_mut_global<R>(&self,  call: impl FnOnce(&mut GD) -> R) -> Result<R> {
+        self.part.global.with_mut_global(call)
     }
 
 }
