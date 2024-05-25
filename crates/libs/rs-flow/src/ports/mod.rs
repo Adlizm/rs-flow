@@ -3,6 +3,7 @@ mod port;
 
 pub use port::{Port, PortId};
 
+#[derive(Debug)]
 pub struct Ports(Vec<Port>);
 
 impl Ports {

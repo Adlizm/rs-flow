@@ -1,0 +1,17 @@
+[package]
+name = "use-macros"
+version = "0.1.0"
+edition = "2021"
+authors = ["Adlizm"]
+keywords = ["rs-flow", "examples", "use-macros"]
+description = "Use of rs-flow-macros"
+license = "MIT"
+
+[lints]
+workspace = true
+
+[dependencies]
+rs-flow = { path = "../../libs/rs-flow" }
+
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }

@@ -10,4 +10,5 @@ members = [
 
     # -- Examples
     "crates/examples/simple-case",
+    "crates/examples/use-macros",
 ]

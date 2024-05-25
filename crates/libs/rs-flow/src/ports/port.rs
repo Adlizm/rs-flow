@@ -10,18 +10,18 @@ pub struct Port {
 }
 
 impl Port {
-    pub const fn new(port: PortId) -> Self {
+    pub fn new(port: PortId) -> Self {
         Self {
             port,
             label: None,
             description: None,
         }
     }
-    pub const fn from(port: PortId, label: &'static str, description: &'static str) -> Self {
+    pub fn from(port: PortId, label: &'static str, description: Option<&'static str>) -> Self {
         Self {
             port,
             label: Some(label),
-            description: Some(description),
+            description: description,
         }
     }
 }
