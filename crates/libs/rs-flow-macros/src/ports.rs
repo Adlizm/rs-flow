@@ -43,8 +43,8 @@ impl Parse for Port {
         let label: Ident = input.parse()?;
 
         let lookahead = input.lookahead1();
-        if  lookahead.peek(Token![=>]) {
-            let _ :syn::token::FatArrow = input.parse()?;
+        if  lookahead.peek(Token![:]) {
+            let _ :syn::token::Colon = input.parse()?;
 
             let content;
             let _ = braced!(content in input);

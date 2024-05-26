@@ -11,7 +11,7 @@ You can see a example in '/src' folder.
   <li>[x] Return Global when finish flow run, without cloned</li>
   <li>[x] Refector Inputs and Outputs ports and Component struct and trait </li>
   <li>[x] Turn a workspace</li>
-  <li>[ ] Macros to implement Inputs and Outputs trait by component</li>
+  <li>[x] Macros to implement Inputs and Outputs trait by component</li>
   <li>[ ] Run flow components in parallel </li>
   <li>[ ] Benchmark for queue implementations:
     <ul>

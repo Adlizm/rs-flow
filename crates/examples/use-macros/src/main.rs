@@ -2,13 +2,11 @@ use rs_flow::prelude::*;
 
 
 #[inputs {
-    message => { description = "Description from input 'message'" },
+    message: { description = "Description from input 'message'" },
     data,
-    bar => {},
+    bar: {},
 }]
-#[outputs {
-    foo => { description = "Output description"}
-}]
+#[outputs {foo: { description = "Output description" }}]
 struct UseMacro {
     name: String
 }
