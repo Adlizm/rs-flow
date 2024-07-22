@@ -1,4 +1,4 @@
-use std::sync::RwLock;
+use std::{fmt::Debug, sync::RwLock};
 
 use crate::errors::{Errors, Result};
 
@@ -30,4 +30,10 @@ impl<GD> Global<GD>
         self.0.into_inner().expect("Global have multiple owners")
     }
 
+}
+
+impl<GD> Debug for Global<GD> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Global").finish()
+    }
 }

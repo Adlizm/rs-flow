@@ -1,67 +1,146 @@
-use std::sync::Arc;
+use std::collections::VecDeque;
+use std::{collections::HashMap, sync::Arc};
 
-use connection::Connection;
+use crate::context::{ctx::Ctx, global::Global};
+use crate::connection::{Connections, Point};
+use crate::component::{Id, Component, Next, Type};
+use crate::prelude::Package;
 
-use crate::component::Id;
-use crate::connection::{self, Point};
-use crate::errors::{Errors, Result};
-use crate::package::Package;
-use crate::ports::PortId;
-
-
-pub mod queues;
+pub mod ctx;
 pub mod global;
-pub mod part;
 
-pub struct Ctx<GD: Send + Sync> {
-    id: Id,
-    part: Arc<part::ContextPart<GD>>,
-}
-
-impl<GD> Ctx<GD> 
+pub(crate) struct Ctxs<GD> 
     where GD: Send + Sync + 'static
 {
-    pub(crate) fn from(id: Id, part: &Arc<part::ContextPart<GD>>) -> Self {
-        Self {
-            id,
-            part: part.clone(),
-        }
-    }
-    
-    pub fn receive(&self, in_port: PortId) -> Result<Option<Package>> {
-        let in_point = Point::new(self.id, in_port);
-        self.part.queues.receive(in_point)
-    }
-    
-    pub fn send(&self, out_port: PortId, package: Package) -> Result<()> {
-        let out_point = Point::new(self.id, out_port);
+    contexts: HashMap<Id, Ctx<GD>>
+}
+impl<GD> Ctxs<GD> 
+    where GD: Send + Sync + 'static
+{
 
-        let in_points: Vec<Point> = self
-            .part
-            .connections
-            .iter()
-            .filter(|conn| conn.out_point() == out_point)
-            .map(Connection::in_point)
+    pub(crate) fn new(
+        components: &HashMap<Id, Component<GD>>, 
+        global: &Arc<Global<GD>>,
+    ) -> Self {
+        let contexts = components.iter()
+            .map(|(id, component)| (*id, Ctx::from(component, &global)))
             .collect();
 
-        if in_points.is_empty() {
-            return Err(Errors::OutPortNotConnected {
-                component: self.id,
-                out_port: out_port,
-            }
-            .into());
+        Self {
+            contexts
+        }
+    }
+
+    pub(crate) fn pop(&mut self, id: Id) -> Option<Ctx<GD>> {
+        self.contexts.remove(&id)
+    }
+
+    pub(crate) fn refresh(
+        &mut self, 
+        ctxs: Vec<(Ctx<GD>, Next)>, 
+        connections: &Connections
+    ) {
+        // insert ctxs 
+        for (ctx, _) in ctxs {
+            self.contexts.insert(ctx.id, ctx);
         }
 
-        self.part.queues.send(in_points, package)
-    }
-    
+        let mut packages_received : HashMap<Point, VecDeque<Package>> = HashMap::new();
 
-    pub fn with_global<R>(&self, call: impl FnOnce(&GD) -> R) -> Result<R> {
-        self.part.global.with_global(call)
+        // insert the packages in map or append with the exists packages
+        fn insert_or_append(
+            point: Point, 
+            mut packages: VecDeque<Package>,
+            packages_received : &mut HashMap<Point, VecDeque<Package>>
+        ) {
+            if packages_received.contains_key(&point) {
+                packages_received.get_mut(&point).unwrap().append(&mut packages);
+            } else {
+                packages_received.insert(point, packages);
+            }
+        }
+
+        // Collecting packeges from send queues
+        for (&id, ctx) in self.contexts.iter_mut() {
+            for (&port, send_queue) in ctx.send.iter_mut() {
+                if send_queue.is_empty() {
+                    break;
+                }
+                let mut packages = VecDeque::new();
+
+                std::mem::swap(&mut packages, send_queue);
+
+                if let Some(to_ports) = connections.from(Point::new(id, port)) {
+                    match to_ports.len() {
+                        0 => {},
+                        1 => {
+                            let to = to_ports[0].clone();
+                            insert_or_append(to, packages, &mut packages_received);
+                        },
+                        _ => {
+                            for i in 1..to_ports.len() {
+                                let to = to_ports[i].clone();
+                                insert_or_append(to, packages.clone(), &mut packages_received);
+                            }
+                            let to = to_ports[0].clone();
+                            insert_or_append(to, packages, &mut packages_received);
+                        }
+                    }
+                }
+            }
+        }
+    
+        // Puting packages in recieve queue
+        for (point, mut packages) in packages_received.drain() {
+            if let Some(ctx) = self.contexts.get_mut(&point.id()) {
+                if let Some(queue) = ctx.receive.get_mut(&point.port()) {
+                    queue.append(&mut packages);
+                }
+            }
+        }
     }
     
-    pub fn with_mut_global<R>(&self,  call: impl FnOnce(&mut GD) -> R) -> Result<R> {
-        self.part.global.with_mut_global(call)
+    pub(crate) fn entry_points(&self) -> Vec<Id> {
+        self.contexts
+            .iter()
+            .filter(|(_, component)| component.receive.len() == 0)
+            .map(|(id, _)| *id)
+            .collect()
+    }
+
+    pub(crate) fn ready_components(&mut self, connections: &Connections) -> Vec<Id> {
+        let mut ready = self.contexts.iter()
+            .filter_map(|(id, ctx)| {
+                if ctx.receive.len() == 0 {
+                    None
+                } else {
+                    if ctx.receive.iter().all(|(_, queue)| queue.len() > 0) {
+                        Some(*id)
+                    } else {
+                        None
+                    }
+                }
+            })
+            .collect::<Vec<Id>>();
+
+            let eager_not_ready = ready.iter()
+                .filter(|id| {
+                    match self.contexts.get(id)
+                        .expect("Ready vec is generted by context map")
+                        .ty 
+                    {
+                        Type::Eager => {
+                            connections.any_ancestral_of(&ready, **id)
+                        },
+                        Type::Lazy => false,
+                    }
+                })
+                .map(|id| *id)
+                .collect::<Vec<Id>>();
+
+            ready.retain(|id| !eager_not_ready.contains(&id));
+
+            ready
     }
 
 }

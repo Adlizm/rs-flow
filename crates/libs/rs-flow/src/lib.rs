@@ -10,7 +10,7 @@ pub mod prelude {
     pub use crate::package::Package;
     pub use crate::ports::*;
 
-    pub use crate::context::Ctx;
+    pub use crate::context::ctx::Ctx;
     pub use crate::errors::{Errors, Result};
     pub use async_trait::async_trait;
     

@@ -1,16 +1,18 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::connection::{Point, Connection};
-use crate::context::Ctx;
-use crate::context::part::ContextPart;
+use crate::component::Next;
+use crate::connection::{Connection, Connections};
+use crate::context::global::Global;
+use crate::context::Ctxs;
 use crate::errors::{Errors, Result};
-use crate::prelude::Component;
+use crate::prelude::{Component, Id};
 
 pub struct Flow<GD> 
     where GD: Sync + Send
 {
-    components: Vec<Component<GD>>,
-    connections: Vec<Connection>,
+    components: HashMap<Id, Component<GD>>,
+    connections: Connections,
 }
 
 
@@ -19,26 +21,21 @@ impl<GD> Flow<GD>
 {
     pub fn new() -> Self {
         Self {
-            components: Vec::new(),
-            connections: Vec::new(),
+            components: HashMap::new(),
+            connections: Connections::new(),
         }
     }
 
     pub fn add_component(mut self, component: Component<GD>) -> Result<Self> {
-        if self.components.iter().any(|c| c.id == component.id) {
+        if self.components.contains_key(&component.id) {
             return Err(Errors::ComponentAlreadyExist { id: component.id }.into());
         }
-        self.components.push(component);
+        self.components.insert(component.id ,component);
         Ok(self)
     }
 
     pub fn add_connection(mut self, connection: Connection) -> Result<Self> {
-        if self.connections.iter().any(|conn| conn.eq(&connection)) {
-            return Err(Errors::ConnectionAlreadyExist(connection).into());
-        }
-
-        let from = self.components.iter().find(|c| c.id == connection.from);
-        if let Some(component) = from {
+        if let Some(component) = self.components.get(&connection.from) {
             if !component.data.outputs().contains(connection.out_port)
             {
                 return Err(Errors::OutPortNotFound {
@@ -54,8 +51,7 @@ impl<GD> Flow<GD>
             .into());
         }
 
-        let to = self.components.iter().find(|c| c.id == connection.to);
-        if let Some(component) = to {
+        if let Some(component) = self.components.get(&connection.to){
             if !component.data.inputs().contains(connection.in_port)
             {
                 return Err(Errors::InPortNotFound {
@@ -68,56 +64,50 @@ impl<GD> Flow<GD>
             return Err(Errors::ComponentNotFound { id: connection.to }.into());
         }
 
-        self.connections.push(connection);
+        self.connections.add(connection)?;
+
         Ok(self)
     }
 
 
     pub async fn run(&self, global: GD) -> Result<GD> {
-        let part = ContextPart::from(&self.connections, global);
-        let part = Arc::new(part);
+        let global_arc = Arc::new(Global::from_data(global));
         
-        //entry points, all components without inputs
-        let mut ready_components = self.entry_points();
+        let mut contexts = Ctxs::new(&self.components, &global_arc);
+
+        let mut ready_components = contexts.entry_points();
 
         while !ready_components.is_empty() {
-            for component in ready_components {
-                let ctx = Ctx::from(component.id, &part);
-                component.data.run(ctx).await?;
+            let mut futures = Vec::with_capacity(ready_components.len());
+
+            for id in ready_components {
+                let mut ctx = contexts.pop(id)
+                    .expect("Ready component never return ids that not exist");
+
+                let component = self.components.get(&id)
+                    .expect("Ready component never return ids that not exist");
+
+                futures.push(async move {
+                    component.data.run(&mut ctx).await
+                        .map(|next| (ctx, next))
+                });
             }
 
-            let has_packages = part.queues.has_packages()?;
-            ready_components = self.ready_components(has_packages);
+            let results = futures::future::try_join_all(futures).await?;
+            if results.iter().any(|(_, next)| next == &Next::Break) {
+                break;
+            }
+
+            contexts.refresh(results, &self.connections);
+
+            ready_components = contexts.ready_components(&self.connections);
         }
         
-        let global = Arc::try_unwrap(part)
-            .expect("Arc parts have multiples owners, something wrong")
-            .global
+        drop(contexts);
+        
+        let global = Arc::try_unwrap(global_arc)
+            .expect("Global have multiples owners, something wrong")
             .take();
         Ok(global)
-    }
-
-    fn entry_points(&self) -> Vec<&Component<GD>> {
-        self.components
-            .iter()
-            .filter(|component| component.data.inputs().is_empty())
-            .collect()
-    }
-    fn ready_components(&self, has_packages: Vec<Point>) -> Vec<&Component<GD>> {
-        self.components
-            .iter()
-            .filter(|component| {
-                let inputs = component.data.inputs();
-                if inputs.is_empty() {
-                    // entry points, only once run
-                    return false;
-                } else {
-                    let id = component.id;
-                    let ready = inputs
-                        .all(|port| has_packages.contains(&Point::new(id, port.port)));
-                    ready
-                }
-            })
-            .collect()
     }
 }

@@ -21,7 +21,7 @@ impl Port {
         Self {
             port,
             label: Some(label),
-            description: description,
+            description,
         }
     }
 }

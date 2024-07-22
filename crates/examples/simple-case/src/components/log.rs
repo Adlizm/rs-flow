@@ -10,15 +10,15 @@ pub struct Log;
 impl ComponentRunnable for Log {
     type Global = MyGlobal;
 
-    async fn run(&self, ctx: Ctx<Self::Global>) -> Result<()> {
+    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
         if let Some(package) = ctx.receive(self.input("message"))? {
-            println!("{:#}", package.content());
+            println!("{:#}", package.get_string()?);
 
             ctx.with_mut_global(|global|  { 
                 global.count += 1;
             })?;
         }
-        Ok(())
+        Ok(Next::Continue)
     }
 }
 

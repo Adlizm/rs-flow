@@ -12,11 +12,11 @@ pub struct Message {
 impl ComponentRunnable for Message {
     type Global = MyGlobal;
     
-    async fn run(&self, ctx: Ctx<Self::Global>) -> Result<()> {
-        let package = Package::new(self.message.clone());
+    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
+        let package = Package::from(self.message.clone());
 
         ctx.send(self.output("message"), package)?;
-        Ok(())
+        Ok(Next::Continue)
     }
 }
 impl Inputs for Message {

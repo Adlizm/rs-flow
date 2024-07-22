@@ -35,7 +35,7 @@ pub fn inputs(attr: TokenStream, item: TokenStream) -> TokenStream {
             .map(|desc| quote!{ Some(#desc) }.into_token_stream())
             .unwrap_or(quote!{ None }.into_token_stream());
 
-        quote!{ rs_flow::ports::Port::from(#i as u16, #label, #description) }
+        quote!{ ::rs_flow::ports::Port::from(#i as u16, #label, #description) }
             .into_token_stream()
     });
     let ports_vec = Punctuated::<_, Token![,]>::from_iter(ports_vec);
@@ -72,12 +72,12 @@ pub fn inputs(attr: TokenStream, item: TokenStream) -> TokenStream {
     }.into_token_stream();
 
     let expand: TokenStream = quote! {
-        impl rs_flow::ports::Inputs for #name {
-            fn inputs(&self) -> &rs_flow::ports::Ports {
-                static INPUTS: std::sync::OnceLock<rs_flow::ports::Ports> = std::sync::OnceLock::new();
+        impl ::rs_flow::ports::Inputs for #name {
+            fn inputs(&self) -> &::rs_flow::ports::Ports {
+                static INPUTS: std::sync::OnceLock<::rs_flow::ports::Ports> = std::sync::OnceLock::new();
         
                 INPUTS.get_or_init(|| {
-                    rs_flow::ports::Ports::new(vec![#ports_vec])
+                    ::rs_flow::ports::Ports::new(vec![#ports_vec])
                 })
             }
             fn input(&self, label: &'static str) -> u16 {
@@ -114,7 +114,7 @@ pub fn outputs(attr: TokenStream, item: TokenStream) -> TokenStream {
             .map(|desc| quote!{ Some(#desc) }.into_token_stream())
             .unwrap_or(quote!{ None }.into_token_stream());
 
-        quote!{ rs_flow::ports::Port::from(#i as u16, #label, #description) }
+        quote!{ ::rs_flow::ports::Port::from(#i as u16, #label, #description) }
             .into_token_stream()
     });
     let ports_vec = Punctuated::<_, Token![,]>::from_iter(ports_vec);
@@ -152,12 +152,12 @@ pub fn outputs(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let expand: TokenStream = quote! {
 
-        impl rs_flow::ports::Outputs for #name {
-            fn outputs(&self) -> &rs_flow::ports::Ports {
-                static OUTPUTS: std::sync::OnceLock<rs_flow::ports::Ports> = std::sync::OnceLock::new();
+        impl ::rs_flow::ports::Outputs for #name {
+            fn outputs(&self) -> &::rs_flow::ports::Ports {
+                static OUTPUTS: std::sync::OnceLock<::rs_flow::ports::Ports> = std::sync::OnceLock::new();
         
                 OUTPUTS.get_or_init(|| {
-                    rs_flow::ports::Ports::new(vec![#ports_vec])
+                    ::rs_flow::ports::Ports::new(vec![#ports_vec])
                 })
             }
             fn output(&self, label: &'static str) -> u16 {
