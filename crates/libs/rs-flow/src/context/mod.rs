@@ -3,8 +3,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::context::{ctx::Ctx, global::Global};
 use crate::connection::{Connections, Point};
-use crate::component::{Id, Component, Next, Type};
-use crate::prelude::Package;
+use crate::component::{Id, Component, Type};
+use crate::package::Package;
+use crate::errors::Errors;
 
 pub mod ctx;
 pub mod global;
@@ -31,21 +32,23 @@ impl<GD> Ctxs<GD>
         }
     }
 
-    pub(crate) fn pop(&mut self, id: Id) -> Option<Ctx<GD>> {
-        self.contexts.remove(&id)
+    pub(crate) fn lend(&mut self, id: Id) -> Option<Ctx<GD>> {
+        if let Some(mut ctx) = self.contexts.remove(&id) {
+            ctx.consumed = false;
+            return Some(ctx);
+        }
+        None
     }
 
-    pub(crate) fn refresh(
+    pub(crate) fn give_back(
         &mut self, 
-        ctxs: Vec<(Ctx<GD>, Next)>, 
+        mut ctx: Ctx<GD>, 
         connections: &Connections
-    ) {
-        // insert ctxs 
-        for (ctx, _) in ctxs {
-            self.contexts.insert(ctx.id, ctx);
+    ) -> Result<(), Errors> {
+        let id = ctx.id;
+        if ctx.consumed == false {
+            return Err(Errors::AnyPackageConsumed { component: id });
         }
-
-        let mut packages_received : HashMap<Point, VecDeque<Package>> = HashMap::new();
 
         // insert the packages in map or append with the exists packages
         fn insert_or_append(
@@ -53,43 +56,38 @@ impl<GD> Ctxs<GD>
             mut packages: VecDeque<Package>,
             packages_received : &mut HashMap<Point, VecDeque<Package>>
         ) {
-            if packages_received.contains_key(&point) {
-                packages_received.get_mut(&point).unwrap().append(&mut packages);
-            } else {
-                packages_received.insert(point, packages);
-            }
+            packages_received.entry(point)
+                .and_modify(|queue| queue.append(&mut packages))
+                .or_insert(packages);
         }
+        
+        let mut packages_received : HashMap<Point, VecDeque<Package>> = HashMap::new();
+        for (port, send_queue) in ctx.send.iter_mut() {
+            let mut packages = VecDeque::new();
+            std::mem::swap(&mut packages, send_queue);
 
-        // Collecting packeges from send queues
-        for (&id, ctx) in self.contexts.iter_mut() {
-            for (&port, send_queue) in ctx.send.iter_mut() {
-                if send_queue.is_empty() {
-                    break;
-                }
-                let mut packages = VecDeque::new();
-
-                std::mem::swap(&mut packages, send_queue);
-
-                if let Some(to_ports) = connections.from(Point::new(id, port)) {
-                    match to_ports.len() {
-                        0 => {},
-                        1 => {
-                            let to = to_ports[0].clone();
-                            insert_or_append(to, packages, &mut packages_received);
-                        },
-                        _ => {
-                            for i in 1..to_ports.len() {
-                                let to = to_ports[i].clone();
-                                insert_or_append(to, packages.clone(), &mut packages_received);
-                            }
-                            let to = to_ports[0].clone();
-                            insert_or_append(to, packages, &mut packages_received);
+            if let Some(to_ports) = connections.from(Point::new(id, *port)) {
+                match to_ports.len() {
+                    0 => {},
+                    1 => {
+                        let to = to_ports[0].clone();
+                        insert_or_append(to, packages, &mut packages_received);
+                    },
+                    _ => {
+                        for i in 1..to_ports.len() {
+                            let to = to_ports[i].clone();
+                            insert_or_append(to, packages.clone(), &mut packages_received);
                         }
+                        let to = to_ports[0].clone();
+                        insert_or_append(to, packages, &mut packages_received);
                     }
                 }
             }
         }
     
+        // insert ctx 
+        self.contexts.insert(id, ctx);
+
         // Puting packages in recieve queue
         for (point, mut packages) in packages_received.drain() {
             if let Some(ctx) = self.contexts.get_mut(&point.id()) {
@@ -98,6 +96,8 @@ impl<GD> Ctxs<GD>
                 }
             }
         }
+
+        Ok(())
     }
     
     pub(crate) fn entry_points(&self) -> Vec<Id> {

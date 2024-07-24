@@ -2,10 +2,15 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use super::{error::PackageError, serializer::{PackageSerializer, PackageSerializerError}};
+use super::{error::PackageError, 
+    serde::{deserialize, serialize, PackageDeserializerError, PackageSerializerError}
+};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(untagged)]
 pub enum Package {
+    #[default]
     Empty,
     Number(f64),
     String(String),
@@ -16,25 +21,29 @@ pub enum Package {
 }
 
 impl Package {
-    pub fn empty() -> Self {
-        Package::Empty
-    }
-    
     pub fn from<T: Into<Package>>(value: T) -> Self {
         value.into()
     }
-
-    pub fn create<T: Serialize>(content: T) -> Result<Self, PackageSerializerError> {
-        content.serialize(PackageSerializer)
+    pub fn new<T: Serialize>(content: T) -> Result<Self, PackageSerializerError> {
+        serialize(content)
+    }
+    pub fn try_into<T: for<'a> Deserialize<'a>>(self) -> 
+        Result<T, PackageDeserializerError> 
+    {
+        deserialize(self)
     }
 
+
+    pub fn empty() -> Self {
+        Package::Empty
+    }
     pub fn array<T: Into<Package>>(value: impl IntoIterator<Item = T>) -> Self {
         Self::Array(value.into_iter().map(Into::into).collect())
     }
-    
     pub fn object<T: Into<Package>>(value: impl IntoIterator<Item = (String, T)>) -> Self {
         Self::Object(value.into_iter().map(|(k,v)| (k, v.into())).collect())
     }
+
 
     pub fn is_empty(&self) -> bool { 
         match self {
@@ -74,6 +83,12 @@ impl Package {
     }
 
 
+    pub fn get_empty(self) -> Result<(), PackageError> { 
+        match self {
+            Package::Empty => Ok(()),
+            _ => Err(PackageError::NotEmpty)
+        }
+    }
     pub fn get_number(self) -> Result<f64, PackageError> { 
         match self {
             Package::Number(number) => Ok(number),
@@ -113,6 +128,8 @@ impl Package {
 
 }
 
+
+
 /// Packages number implmentations
 macro_rules! impl_from_number {
     ($($ty: ty),+) => {
@@ -125,8 +142,8 @@ macro_rules! impl_from_number {
         )+
     };
 }
-impl_from_number!(u8, u16, u32, u64, u128, usize);
-impl_from_number!(i8, i16, i32, i64, i128, isize);
+impl_from_number!(u8, u16, u32, u64, usize);
+impl_from_number!(i8, i16, i32, i64, isize);
 impl_from_number!(f32, f64);
 
 /// Packages boolean implmentations

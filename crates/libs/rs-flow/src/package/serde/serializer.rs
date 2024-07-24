@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::Display};
 
+use thiserror::Error;
 use serde::{
     ser::{
         SerializeMap, 
@@ -9,23 +10,16 @@ use serde::{
         SerializeTuple, 
         SerializeTupleStruct, 
         SerializeTupleVariant
-    }, 
-    Serializer
+    }, Serialize, Serializer
 };
 
-use super::Package;
+use crate::package::Package;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
+#[error("Serialize into a package fail, cause: {cause:?}")]
 pub struct PackageSerializerError {
     pub cause: String
 }
-
-impl std::fmt::Display for PackageSerializerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-impl std::error::Error for PackageSerializerError {}
 
 impl serde::ser::Error for PackageSerializerError {
     fn custom<T>(msg:T) -> Self 
@@ -35,6 +29,11 @@ impl serde::ser::Error for PackageSerializerError {
     }
 }
 
+pub fn serialize<T: Serialize>(value: T) -> 
+    Result<Package, PackageSerializerError> 
+{
+    value.serialize(PackageSerializer)
+}
 
 // region: MapKeySerializer
 struct MapKeySerializer;
@@ -327,13 +326,13 @@ impl SerializeStructVariant for Impossible {
 // endregion
 
 // region: PackageSerializer
-pub(crate) struct PackageSerializer;
+struct PackageSerializer;
 
-pub(crate) struct CompoundArray {
+struct CompoundArray {
     name: Option<String>,
     data: Vec<Package>
 }
-pub(crate) struct CompoundObjects {
+struct CompoundObjects {
     name: Option<String>,
     data: HashMap::<String, Package>,
 }
@@ -471,10 +470,10 @@ impl Serializer for PackageSerializer {
 
     fn serialize_tuple_struct(
         self,
-        _name: &'static str,
+        name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        Ok(CompoundArray { name: None, data: Vec::with_capacity(len) })
+        Ok(CompoundArray { name: Some(name.to_owned()), data: Vec::with_capacity(len) })
     }
 
     fn serialize_tuple_variant(
@@ -508,14 +507,6 @@ impl Serializer for PackageSerializer {
         len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
         Ok(CompoundObjects { name: Some(variant.to_string()), data: HashMap::with_capacity(len) })
-    }
-    
-    fn serialize_i128(self, v: i128) -> Result<Self::Ok, Self::Error> {
-        Ok(v.into())
-    }
-    
-    fn serialize_u128(self, v: u128) -> Result<Self::Ok, Self::Error> {
-        Ok(v.into())
     }
 } 
 
@@ -567,7 +558,13 @@ impl SerializeTupleStruct for CompoundArray {
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(Package::Array(self.data))
+        if let Some(name) = self.name {
+            let data = Package::Array(self.data);
+            let data = HashMap::from([(name, data)]);
+            Ok(Package::Object(data))
+        } else {
+            Err(PackageSerializerError { cause: "Cannot serialize a Tuple Struct without the name".to_string() })
+        }
     }
 }
 
@@ -589,7 +586,7 @@ impl SerializeTupleVariant for CompoundArray {
             let data = HashMap::from([(name, data)]);
             Ok(Package::Object(data))
         } else {
-            Ok(Package::Array(self.data))
+            Err(PackageSerializerError { cause: "Cannot serialize a Tuple variant without the name".to_string() })
         }
     }
 }

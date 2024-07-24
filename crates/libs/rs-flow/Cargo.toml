@@ -1,6 +1,6 @@
 [package]
 name = "rs-flow"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["Adlizm"]
 keywords = ["flow", "components"]
@@ -12,9 +12,8 @@ workspace = true
 
 [dependencies]
 futures = "0.3.30"
+thiserror = "1.0.63"
 async-trait = { version = "0.1.73" }
-
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 
 rs-flow-macros = { path = "../rs-flow-macros" }

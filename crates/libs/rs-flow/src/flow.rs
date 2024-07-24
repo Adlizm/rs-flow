@@ -81,7 +81,7 @@ impl<GD> Flow<GD>
             let mut futures = Vec::with_capacity(ready_components.len());
 
             for id in ready_components {
-                let mut ctx = contexts.pop(id)
+                let mut ctx = contexts.lend(id)
                     .expect("Ready component never return ids that not exist");
 
                 let component = self.components.get(&id)
@@ -98,7 +98,9 @@ impl<GD> Flow<GD>
                 break;
             }
 
-            contexts.refresh(results, &self.connections);
+            for (ctx, _) in results {
+                contexts.give_back(ctx, &self.connections)?;
+            }
 
             ready_components = contexts.ready_components(&self.connections);
         }

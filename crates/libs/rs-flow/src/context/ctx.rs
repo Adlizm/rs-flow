@@ -15,6 +15,7 @@ pub struct Ctx<GD: Send + Sync> {
     pub(crate) ty: Type,
     pub(crate) send: HashMap<PortId, VecDeque<Package>>,
     pub(crate) receive: HashMap<PortId, VecDeque<Package>>,
+    pub(crate) consumed: bool,
 
     global: Arc<Global<GD>>,
 }
@@ -34,6 +35,7 @@ impl<GD> Ctx<GD>
             ty: component.ty,
             send,
             receive,
+            consumed: false,
             global: global.clone(),
         }
     }
@@ -44,6 +46,9 @@ impl<GD> Ctx<GD>
                 component: self.id, port: in_port 
             })?
             .pop_front();
+
+        self.consumed = true;
+        
         Ok(package)
     }
     

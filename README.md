@@ -16,8 +16,9 @@ You can see examples in '/crates/examples' folder.
   <li>[x] Check if a connection create a Loop </li>
   <li>[x] Components can return { Continue or Break } that dermine if a flow continue or stop your execution</li>
   <li>[x] Create component types { Lazy or Eager } that define when a component will be executed </li> 
-  <li>[x] Update Packges for include Bytes type</li>
-  <li>[ ] Check if a package has been consumed from queue (Loop detected) </li>
+  <li>[x] Update Packges for include Bytes type and </li>
+  <li>[x] impl Serializer and Deserializer for Package </li>
+  <li>[x] Check if a package has been consumed from queue (Loop detected) </li>
   <li>[ ] Run flow components in parallel </li>
   <li>[ ] Docs </li>
 </ul>

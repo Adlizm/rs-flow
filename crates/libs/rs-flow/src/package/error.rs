@@ -1,24 +1,34 @@
-use super::serializer::PackageSerializerError;
+use thiserror::Error;
 
+use super::serde::PackageSerializerError;
+use super::serde::PackageDeserializerError;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum PackageError {
+    #[error("Not a empty package")]
+    NotEmpty,
+
+    #[error("Package not contain a number")]
     NotNumber,
+    
+    #[error("Package not contain a bool")]
     NotBoolean,
+    
+    #[error("Package not contain a string")]
     NotString,
+    
+    #[error("Package not contain bytes")]
     NotBytes,
+    
+    #[error("Package not contain a array")]
     NotArray,
+    
+    #[error("Package not contain a object")]
     NotObject,
 
-    SerializeFail(PackageSerializerError)
-}
-
-impl std::fmt::Display for PackageError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self)
-    }
-}
-
-impl std::error::Error for PackageError {
+    #[error("{0}")]
+    SerializeFail(PackageSerializerError),
     
+    #[error("{0}")]
+    DeserializeFail(PackageDeserializerError)
 }
