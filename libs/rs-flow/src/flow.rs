@@ -18,7 +18,7 @@ use crate::prelude::{Component, Id};
 /// 
 /// The image bellow show the logic of [Flow] execution and when each [Component] will run.
 /// 
-/// <img src="https://github.com/Adlizm/rs-flow/assets/flow-execution.svg" alt="Flow Execution Logic"/>
+/// <img src="https://github.com/Adlizm/rs-flow/raw/main/assets/flow-execution.svg" alt="Flow Execution Logic"/>
 /// 
 /// The Flow run in cicles. In each cicle a Set of Component's execute
 /// the `run` function defined in trait [ComponentRunnable](crate::component::ComponentRunnable)
