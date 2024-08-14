@@ -1,15 +1,15 @@
 use async_trait::async_trait;
 
 use crate::connection::Point;
-use crate::context::ctx::Ctx;
-use crate::errors::Result;
+use crate::context::Ctx;
+use crate::error::RunResult as Result;
 use crate::ports::{Inputs, Outputs};
 
-/// Define if next cicle of flow will be executed
+/// Define if next cicle of [Flow](crate::flow::Flow) will be executed
 ///  
-/// - If any component return Ok(Next::Break) flow run will be interrupted and return Ok(Global)
-/// - If all component return Ok(Next::Continue) flow continue for a more cicle
-/// - If any component return Err(_), flow will be interrupted and return that Err
+/// - If any component return <code> Ok([Next::Break]) </code> flow run will be interrupted and return Ok(Global)
+/// - If all component return <code> Ok([Next::Continue]) </code> flow continue to run for a more cicle
+/// - If any component return <code> Err(_) </code>, flow will be interrupted and return that Error
 /// 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum Next { 
@@ -20,17 +20,17 @@ pub enum Next {
 
 
 ///
-/// Define when a component is prepared to run.
+/// Define when a [Component] is prepared to run.
 ///
-/// - Lazy : Wait for at least one packet received at each input port.
+/// - [`Lazy`](Type::Lazy) : Wait for at least one [Package](crate::package::Package) received at each input port.
 ///    
-/// - Eager: 
-///     - Wait for at least one packet received at each input port.
-///     - Wait for all ancestral components to run, is mean that if any 
-/// ancestral component is prepared to run, this component will not run.
+/// - [`Eager`](Type::Eager): 
+///     - Wait for at least one [Package](crate::package::Package) received at each input port.
+///     - Wait for all ancestral components to run, it's means that if any 
+/// ancestral of this [Component] is prepared to run, this [Component] will not run.
 /// 
-/// Obs: If a component does not have an input port, it will be selected 
-///      as the flow's entry point, and will be executed once in the first circle.
+/// Obs: If a [Component] does not have an [Inputs](crate::ports::Inputs) port's, it will be selected 
+///      as the flow's entry point, and will be executed once in the first cicle.
 /// 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum Type {
@@ -46,12 +46,12 @@ pub type Id = usize;
 
 
 /// 
-/// Define the function that will excuted for a component
+/// Define the function that will excuted when a [Component] run
 /// 
 /// Global define tha data that this component can be access,
 /// the data is like a global state of Flow that any component can be read or write
 /// 
-/// A Flow hava a unique <Global> type, what means that only component 
+/// A [Flow](crate::flow::Flow) hava a unique [Global](ComponentRunnable::Global) type, what means that only component 
 /// with the same Self::Global can be use for contruct the flow.
 /// 
 /// # Examples
@@ -64,10 +64,11 @@ pub type Id = usize;
 /// #[inputs] 
 /// #[outputs]
 /// struct ComponentA;
+/// 
 /// #[async_trait]
 /// impl ComponentRunnable for ComponentA {
 ///     type Global = GlobalA;
-///     async fn run(&self, ctx: Ctx<Self::Global>) -> Result<Next> { 
+///     async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> { 
 ///         Ok(Next::Continue) 
 ///     }
 /// }
@@ -75,10 +76,11 @@ pub type Id = usize;
 /// #[inputs] 
 /// #[outputs]
 /// struct ComponentB;
+/// 
 /// #[async_trait]
 /// impl ComponentRunnable for ComponentB {
 ///     type Global = GlobalB;
-///     async fn run(&self, ctx: Ctx<Self::Global>) -> Result<Next> { 
+///     async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> { 
 ///         Ok(Next::Continue) 
 ///     }
 /// }
@@ -101,11 +103,11 @@ pub trait ComponentRunnable: Send + Sync + Inputs + Outputs + 'static {
 
 ///
 /// Storage the component infos:
-/// - Id that indentify a component in a flow,
-/// - Type of component 
-/// - Traits needed to run (ComponentRunnable + Inputs + Outputs) 
+/// - [Id] that indentify a component in a [Flow](crate::flow::Flow),
+/// - [Type] of component 
+/// - Traits needed to run ([ComponentRunnable] + [Inputs] + [Outputs]) 
 /// 
-/// This component cannot be modified once is initialized
+/// 
 /// ```
 /// use rs_flow::prelude::*;
 /// 
@@ -122,7 +124,7 @@ pub trait ComponentRunnable: Send + Sync + Inputs + Outputs + 'static {
 /// #[async_trait]
 /// impl ComponentRunnable for A {
 ///     type Global = G;
-///     async fn run(&self, ctx: Ctx<Self::Global>) -> Result<Next> {
+///     async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
 ///         return Ok(Next::Continue);
 ///     }
 /// }

@@ -1,7 +1,7 @@
 # rs-flow
 System of flows in rust
 
-You can see examples in '/crates/examples' folder.
+You can see examples in '/rs-flow/tests' folder.
 
 ## Next feautures
 <ul>
@@ -20,5 +20,5 @@ You can see examples in '/crates/examples' folder.
   <li>[x] impl Serializer and Deserializer for Package </li>
   <li>[x] Check if a package has been consumed from queue (Loop detected) </li>
   <li>[ ] Run flow components in parallel </li>
-  <li>[ ] Docs </li>
+  <li>[x] Docs </li>
 </ul>

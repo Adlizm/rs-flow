@@ -13,9 +13,8 @@ impl ComponentRunnable for Message {
     type Global = MyGlobal;
     
     async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
-        let package = Package::from(self.message.clone());
 
-        ctx.send(self.output("message"), package)?;
+        ctx.send(self.output("message"), self.message.clone().into());
         Ok(Next::Continue)
     }
 }
@@ -43,7 +42,7 @@ impl Outputs for Message {
         if label == "message" {
             return 0;
         } else {
-             panic!("Not found output with label = {label}")
+            panic!("Not found output with label = {label}")
         }
     }
 }

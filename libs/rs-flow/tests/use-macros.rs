@@ -1,6 +1,5 @@
 use rs_flow::prelude::*;
 
-
 #[inputs {
     message: { description = "Description from input 'message'" },
     data,
@@ -11,6 +10,8 @@ struct UseMacro {
     name: String
 }
 
+
+#[test]
 fn main() {
     let use_macro_component = UseMacro { name: "my string".to_owned() };
 

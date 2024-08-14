@@ -1,4 +1,4 @@
-use std::error;
+use std::error::Error;
 
 use thiserror::Error;
 
@@ -7,11 +7,11 @@ use crate::connection::Connection;
 use crate::ports::PortId;
 
 
-pub type Result<T> = std::result::Result<T, Box<dyn error::Error + Send + Sync>>;
-
+pub type Result<T> = std::result::Result<T, FlowError>;
+pub type RunResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>; 
 
 #[derive(Debug, Error)]
-pub enum Errors {
+pub enum FlowError {
     #[error("Component with id = {id:?} already exist")]
     ComponentAlreadyExist { id: Id },
 

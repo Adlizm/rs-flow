@@ -11,7 +11,7 @@ impl ComponentRunnable for Log {
     type Global = MyGlobal;
 
     async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
-        if let Some(package) = ctx.receive(self.input("message"))? {
+        if let Some(package) = ctx.receive(self.input("message")) {
             println!("{:#}", package.get_string()?);
 
             ctx.with_mut_global(|global|  { 

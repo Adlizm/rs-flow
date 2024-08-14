@@ -5,12 +5,13 @@ use rs_flow::prelude::*;
 mod components;
 use components::{
     MyGlobal,
-    log::Log,
-    message::Message
+    message::Message,
+    log::Log
 };
 
-#[tokio::main]
-async fn main() -> Result<()> {
+
+#[tokio::test]
+async fn simple_case() -> Result<()> {
 
     let message1 = Component::new(1, Message { message: "Hello".to_string() });
     let message2 = Component::new(2, Message { message: "World".to_string() });
@@ -29,7 +30,9 @@ async fn main() -> Result<()> {
     for _ in 0..10 {
         let tflow = flow.clone();
         let handler = tokio::spawn(async move {
-            let global = tflow.run(MyGlobal { count: 0 }).await;
+            let global = tflow.run(MyGlobal { count: 0 }).await.unwrap();
+            
+            assert!(global.count == 2);
             println!("{:?}", global);
         });
         handlers.push(handler);

@@ -1,10 +1,10 @@
 [package]
 name = "rs-flow-macros"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Adlizm"]
 keywords = ["flow", "macros"]
-description = "Macros to help developement of components from 'rs-flows' lib"
+description = "Macros to help developement of components from 'rs-flow' lib"
 license = "MIT"
 
 [lints]

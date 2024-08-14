@@ -5,10 +5,6 @@ unsafe_code = "forbid"
 resolver = "2"
 members = [
     # -- Libraries
-    "crates/libs/rs-flow",          # core.
-    "crates/libs/rs-flow-macros",   # macros.
-
-    # -- Examples
-    "crates/examples/simple-case",
-    "crates/examples/use-macros",
+    "libs/rs-flow",          # core.
+    "libs/rs-flow-macros",   # macros.
 ]
