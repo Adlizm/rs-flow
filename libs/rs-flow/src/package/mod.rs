@@ -1,7 +1,6 @@
-mod package;
 mod error;
+mod package;
 
 pub mod serde;
 
 pub use package::Package;
-pub use error::PackageError;

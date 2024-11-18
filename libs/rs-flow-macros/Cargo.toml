@@ -1,6 +1,6 @@
 [package]
 name = "rs-flow-macros"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 authors = ["Adlizm"]
 keywords = ["flow", "macros"]
@@ -16,3 +16,4 @@ proc-macro = true
 [dependencies]
 syn = { version = "1.0", features = ["parsing"] }
 quote = "1.0"
+proc-macro2 = "1.0.89"

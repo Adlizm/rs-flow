@@ -2,6 +2,6 @@ pub mod log;
 pub mod message;
 
 #[derive(Debug)]
-pub struct MyGlobal {
+pub struct CounterLogs {
     pub count: i32,
 }

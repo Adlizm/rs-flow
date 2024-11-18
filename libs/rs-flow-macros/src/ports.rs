@@ -1,85 +1,159 @@
-use std::fmt::{Formatter, Debug};
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::{Data, DataStruct, DeriveInput, Fields, LitStr};
 
-use proc_macro::Span;
+type Result<T> = core::result::Result<T, syn::Error>;
 
-use syn::punctuated::Punctuated;
-use syn::token::Eq;
-use syn::{
-    braced, Ident, Lit, LitStr, Token
-};
-use syn::parse::{Parse, ParseStream};
-
-
-
-struct IdentAttr {
-    ident: Ident,
-    literal: Lit,
-}
-impl Parse for IdentAttr {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let ident: Ident = input.parse()?;
-        let _: Eq = input.parse()?;
-        let literal: Lit = input.parse()?;
-        Ok(IdentAttr { ident, literal })
-    }
+pub enum Ports {
+    Inputs,
+    Outputs,
 }
 
-pub struct Port {
-    pub label: Ident,
-    pub description: Option<LitStr>
-}
-impl Debug for Port {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        f.debug_struct("Port")
-            .field("label", &self.label.to_string())
-            .field("description", &self.description.as_ref().map(|l| l.token().to_string()))
-            .finish()
-    }
-}
+fn impl_unit_struct(input: DeriveInput, port_trait: Ports) -> Result<TokenStream> {
+    let ty = &input.ident;
+    let trait_name = match port_trait {
+        Ports::Inputs => quote! { ::rs_flow::ports::Inputs },
+        Ports::Outputs => quote! { ::rs_flow::ports::Outputs },
+    };
 
+    let label = ty.to_string();
 
-impl Parse for Port {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let label: Ident = input.parse()?;
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-        let lookahead = input.lookahead1();
-        if  lookahead.peek(Token![:]) {
-            let _ :syn::token::Colon = input.parse()?;
+    let description = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path.is_ident("description"));
 
-            let content;
-            let _ = braced!(content in input);
-            let attrs: Punctuated<IdentAttr, Token![,]> = content.parse_terminated(IdentAttr::parse)?;
+    let description = if let Some(attr) = description {
+        let description: LitStr = attr.parse_args()?;
+        quote! { Some(#description) }
+    } else {
+        quote! { None }
+    };
 
-            let mut description = None;
-            for attr in attrs {
-                if attr.ident == Ident::new("description", Span::call_site().into()) {
-                    if description.is_some() {
-                        return Err(syn::Error::new(attr.ident.span(), "alredy defined."))
-                    } else {
-                        if let Lit::Str(lit) = attr.literal {
-                            description = Some(lit);
-                        } else {
-                            return Err(syn::Error::new(attr.literal.span(), "Expect a string literal"))
-                        }
-                    }
-                    continue;
-                }
+    let token = quote! {
+        impl #impl_generics #trait_name for #ty #ty_generics #where_clause {
+            const PORTS: ::rs_flow::ports::Ports = ::rs_flow::ports::Ports::new(&[
+                ::rs_flow::ports::Port::from(0, #label, #description)
+            ]);
 
-                return Err(syn::Error::new(attr.ident.span(), "Expect description"))
+            fn into_port(&self) -> ::rs_flow::ports::PortId {
+                0
             }
-            return Ok(Self { label, description });
         }
-        Ok(Self { label, description: None })
+    };
+
+    Ok(token.into())
+}
+
+fn impl_enum(input: DeriveInput, port_trait: Ports) -> Result<TokenStream> {
+    let ty = &input.ident;
+    let trait_name = match port_trait {
+        Ports::Inputs => quote! { ::rs_flow::ports::Inputs },
+        Ports::Outputs => quote! { ::rs_flow::ports::Outputs },
+    };
+
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    let data = if let Data::Enum(data) = input.data {
+        data
+    } else {
+        unreachable!()
+    };
+
+    let mut ports = Vec::<TokenStream>::with_capacity(data.variants.len());
+    let mut intos = Vec::<TokenStream>::with_capacity(data.variants.len());
+
+    for (index, variant) in data.variants.into_iter().enumerate() {
+        if let Fields::Unit = variant.fields {
+            let ident = variant.ident;
+
+            let id = index as u16;
+            let label = ident.to_string();
+            let description = variant
+                .attrs
+                .into_iter()
+                .find(|attr| attr.path.is_ident("description"));
+
+            let description = if let Some(attr) = description {
+                let description: LitStr = attr.parse_args()?;
+                quote! { Some(#description) }
+            } else {
+                quote! { None }
+            };
+
+            ports.push(quote! { ::rs_flow::ports::Port::from(#id, #label, #description), });
+            intos.push(quote! { Self::#ident => #id, })
+        } else {
+            return Err(syn::Error::new(
+                variant.ident.span(),
+                match port_trait {
+                    Ports::Inputs => "Derive 'Inputs' only support in Unit Variants",
+                    Ports::Outputs => "Derive 'Outputs' only support in Unit Variants",
+                },
+            ));
+        }
+    }
+
+    let intos = match intos.len() {
+        0 => match port_trait {
+            Ports::Inputs => quote! { panic!("Component not have a input port"); },
+            Ports::Outputs => quote! { panic!("Component not have a output port"); },
+        },
+        1 => {
+            quote! { 0 }
+        }
+        _ => {
+            quote! {
+                match self {
+                    #(#intos)*
+                }
+            }
+        }
+    };
+
+    let token = quote! {
+        impl #impl_generics #trait_name for #ty #ty_generics #where_clause {
+            const PORTS: ::rs_flow::ports::Ports = ::rs_flow::ports::Ports::new(&[
+                #(#ports)*
+            ]);
+
+            fn into_port(&self) -> ::rs_flow::ports::PortId {
+                #intos
+            }
+        }
+    };
+
+    Ok(token)
+}
+
+fn try_expand(input: DeriveInput, port_trait: Ports) -> Result<TokenStream> {
+    let err = match port_trait {
+        Ports::Inputs => "Derive 'Inputs' only supported for enums or unit structs",
+        Ports::Outputs => "Derive 'Outputs' only supported for enums or unit structs",
+    };
+    match &input.data {
+        syn::Data::Enum(_) => impl_enum(input, port_trait),
+        syn::Data::Struct(DataStruct { fields, .. }) => match fields {
+            Fields::Unit => impl_unit_struct(input, port_trait),
+            _ => Err(syn::Error::new(input.ident.span(), err)),
+        },
+        _ => Err(syn::Error::new(input.ident.span(), err)),
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct Ports(pub(crate) Vec<Port>);
+pub(crate) fn derive_ports(input: DeriveInput, port_trait: Ports) -> TokenStream {
+    match try_expand(input, port_trait) {
+        Ok(expand) => expand,
+        Err(error) => {
+            let error = error.to_compile_error();
 
-impl Parse for Ports {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let ports: Punctuated<Port, Token![,]> = input.parse_terminated(Port::parse)?;
+            let token = quote! {
+                #error
+            };
 
-        Ok(Ports(ports.into_iter().collect()))
+            token.into()
+        }
     }
 }

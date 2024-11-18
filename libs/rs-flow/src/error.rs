@@ -1,25 +1,20 @@
-use std::error::Error;
-
-use thiserror::Error;
-
 use crate::component::Id;
 use crate::connection::Connection;
 use crate::ports::PortId;
 
+pub type Result<T> = std::result::Result<T, Error>;
+pub type RunResult<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-pub type Result<T> = std::result::Result<T, FlowError>;
-pub type RunResult<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>; 
-
-#[derive(Debug, Error)]
-pub enum FlowError {
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
     #[error("Component with id = {id:?} already exist")]
     ComponentAlreadyExist { id: Id },
 
-    #[error("Not found a component with id = {id:?}")]
+    #[error("Not found a operator with id = {id:?}")]
     ComponentNotFound { id: Id },
 
     #[error("Connection = {connection:?} already exist")]
-    ConnectionAlreadyExist{ connection: Connection },
+    ConnectionAlreadyExist { connection: Connection },
 
     #[error("A Loop is created with the connection = {connection:?}")]
     LoopCreated { connection: Connection },

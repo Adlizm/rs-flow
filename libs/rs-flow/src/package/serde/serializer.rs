@@ -1,43 +1,40 @@
 use std::{collections::HashMap, fmt::Display};
 
-use thiserror::Error;
 use serde::{
     ser::{
-        SerializeMap, 
-        SerializeSeq, 
-        SerializeStruct, 
-        SerializeStructVariant, 
-        SerializeTuple, 
-        SerializeTupleStruct, 
-        SerializeTupleVariant
-    }, Serialize, Serializer
+        SerializeMap, SerializeSeq, SerializeStruct, SerializeStructVariant, SerializeTuple,
+        SerializeTupleStruct, SerializeTupleVariant,
+    },
+    Serialize, Serializer,
 };
+use thiserror::Error;
 
 use crate::package::Package;
 
 #[derive(Debug, Error)]
 #[error("Serialize into a package fail, cause: {cause:?}")]
 pub struct PackageSerializerError {
-    pub cause: String
+    cause: String,
 }
 
 impl serde::ser::Error for PackageSerializerError {
-    fn custom<T>(msg:T) -> Self 
-        where T: Display 
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
     {
-        PackageSerializerError { cause: msg.to_string() }
+        PackageSerializerError {
+            cause: msg.to_string(),
+        }
     }
 }
 
-pub fn serialize<T: Serialize>(value: T) -> 
-    Result<Package, PackageSerializerError> 
-{
+pub fn serialize<T: Serialize>(value: T) -> Result<Package, PackageSerializerError> {
     value.serialize(PackageSerializer)
 }
 
 // region: MapKeySerializer
 struct MapKeySerializer;
-struct Impossible; 
+struct Impossible;
 
 impl Serializer for MapKeySerializer {
     type Ok = String;
@@ -58,7 +55,7 @@ impl Serializer for MapKeySerializer {
     fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
         Ok(v.to_string())
     }
-    
+
     fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
         Ok(v.to_string())
     }
@@ -104,7 +101,9 @@ impl Serializer for MapKeySerializer {
     }
 
     fn serialize_bytes(self, _v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        Err(PackageSerializerError { cause: "Only string can be a key".to_owned() })
+        Err(PackageSerializerError {
+            cause: "Only string can be a key".to_owned(),
+        })
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
@@ -113,7 +112,8 @@ impl Serializer for MapKeySerializer {
 
     fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         value.serialize(self)
     }
 
@@ -140,8 +140,11 @@ impl Serializer for MapKeySerializer {
         _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize {
-        Err(PackageSerializerError { cause: "Variant cannot be serialized into string".to_owned() })
+        T: serde::Serialize,
+    {
+        Err(PackageSerializerError {
+            cause: "Variant cannot be serialized into string".to_owned(),
+        })
     }
 
     fn serialize_newtype_variant<T: ?Sized>(
@@ -152,16 +155,23 @@ impl Serializer for MapKeySerializer {
         _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize {
-        Err(PackageSerializerError { cause: "Variant cannot be serialized into string".to_owned() })
+        T: serde::Serialize,
+    {
+        Err(PackageSerializerError {
+            cause: "Variant cannot be serialized into string".to_owned(),
+        })
     }
 
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        Err(PackageSerializerError { cause: "Only string can be a key".to_owned() })
+        Err(PackageSerializerError {
+            cause: "Only string can be a key".to_owned(),
+        })
     }
 
     fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Self::Error> {
-        Err(PackageSerializerError { cause: "Only string can be a key".to_owned() })
+        Err(PackageSerializerError {
+            cause: "Only string can be a key".to_owned(),
+        })
     }
 
     fn serialize_tuple_struct(
@@ -169,7 +179,9 @@ impl Serializer for MapKeySerializer {
         _name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        Err(PackageSerializerError { cause: "Only string can be a key".to_owned() })
+        Err(PackageSerializerError {
+            cause: "Only string can be a key".to_owned(),
+        })
     }
 
     fn serialize_tuple_variant(
@@ -179,11 +191,15 @@ impl Serializer for MapKeySerializer {
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        Err(PackageSerializerError { cause: "Only string can be a key".to_owned() })
+        Err(PackageSerializerError {
+            cause: "Only string can be a key".to_owned(),
+        })
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        Err(PackageSerializerError { cause: "Only string can be a key".to_owned() })
+        Err(PackageSerializerError {
+            cause: "Only string can be a key".to_owned(),
+        })
     }
 
     fn serialize_struct(
@@ -191,7 +207,9 @@ impl Serializer for MapKeySerializer {
         _name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        Err(PackageSerializerError { cause: "Only string can be a key".to_owned() })
+        Err(PackageSerializerError {
+            cause: "Only string can be a key".to_owned(),
+        })
     }
 
     fn serialize_struct_variant(
@@ -201,9 +219,11 @@ impl Serializer for MapKeySerializer {
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        Err(PackageSerializerError { cause: "Only string can be a key".to_owned() })
+        Err(PackageSerializerError {
+            cause: "Only string can be a key".to_owned(),
+        })
     }
-} 
+}
 
 impl SerializeSeq for Impossible {
     type Ok = String;
@@ -211,7 +231,8 @@ impl SerializeSeq for Impossible {
 
     fn serialize_element<T: ?Sized>(&mut self, _value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unreachable!()
     }
     fn end(self) -> Result<Self::Ok, Self::Error> {
@@ -225,7 +246,8 @@ impl SerializeTuple for Impossible {
 
     fn serialize_element<T: ?Sized>(&mut self, _value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unreachable!()
     }
 
@@ -240,7 +262,8 @@ impl SerializeTupleStruct for Impossible {
 
     fn serialize_field<T: ?Sized>(&mut self, _value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unreachable!()
     }
 
@@ -255,7 +278,8 @@ impl SerializeTupleVariant for Impossible {
 
     fn serialize_field<T: ?Sized>(&mut self, _value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unreachable!()
     }
 
@@ -270,13 +294,15 @@ impl SerializeMap for Impossible {
 
     fn serialize_key<T: ?Sized>(&mut self, _key: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unreachable!()
     }
 
     fn serialize_value<T: ?Sized>(&mut self, _value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unreachable!()
     }
 
@@ -295,7 +321,8 @@ impl SerializeStruct for Impossible {
         _value: &T,
     ) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unreachable!()
     }
 
@@ -314,14 +341,14 @@ impl SerializeStructVariant for Impossible {
         _value: &T,
     ) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unreachable!()
     }
     fn end(self) -> Result<Self::Ok, Self::Error> {
         unreachable!()
     }
 }
-
 
 // endregion
 
@@ -330,13 +357,12 @@ struct PackageSerializer;
 
 struct CompoundArray {
     name: Option<String>,
-    data: Vec<Package>
+    data: Vec<Package>,
 }
 struct CompoundObjects {
     name: Option<String>,
-    data: HashMap::<String, Package>,
+    data: HashMap<String, Package>,
 }
-
 
 impl Serializer for PackageSerializer {
     type Ok = Package;
@@ -412,7 +438,8 @@ impl Serializer for PackageSerializer {
 
     fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         value.serialize(self)
     }
 
@@ -439,7 +466,8 @@ impl Serializer for PackageSerializer {
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         let value = value.serialize(self)?;
         let key = name.to_string();
         Ok(Package::Object(HashMap::from([(key, value)])))
@@ -453,7 +481,8 @@ impl Serializer for PackageSerializer {
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         let value = value.serialize(self)?;
         let key = variant.to_string();
         Ok(Package::Object(HashMap::from([(key, value)])))
@@ -461,11 +490,17 @@ impl Serializer for PackageSerializer {
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         let len = len.unwrap_or(0);
-        Ok(CompoundArray { name: None, data: Vec::with_capacity(len) })
+        Ok(CompoundArray {
+            name: None,
+            data: Vec::with_capacity(len),
+        })
     }
 
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
-        Ok(CompoundArray { name: None, data: Vec::with_capacity(len) })
+        Ok(CompoundArray {
+            name: None,
+            data: Vec::with_capacity(len),
+        })
     }
 
     fn serialize_tuple_struct(
@@ -473,7 +508,10 @@ impl Serializer for PackageSerializer {
         name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        Ok(CompoundArray { name: Some(name.to_owned()), data: Vec::with_capacity(len) })
+        Ok(CompoundArray {
+            name: Some(name.to_owned()),
+            data: Vec::with_capacity(len),
+        })
     }
 
     fn serialize_tuple_variant(
@@ -483,12 +521,18 @@ impl Serializer for PackageSerializer {
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        Ok(CompoundArray { name: Some(variant.to_string()), data: Vec::with_capacity(len) })
+        Ok(CompoundArray {
+            name: Some(variant.to_string()),
+            data: Vec::with_capacity(len),
+        })
     }
 
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
         let len = len.unwrap_or(0);
-        Ok(CompoundObjects { name: None, data: HashMap::with_capacity(len) })
+        Ok(CompoundObjects {
+            name: None,
+            data: HashMap::with_capacity(len),
+        })
     }
 
     fn serialize_struct(
@@ -496,7 +540,10 @@ impl Serializer for PackageSerializer {
         _name: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        Ok(CompoundObjects { name: None, data: HashMap::with_capacity(len) })
+        Ok(CompoundObjects {
+            name: None,
+            data: HashMap::with_capacity(len),
+        })
     }
 
     fn serialize_struct_variant(
@@ -506,10 +553,12 @@ impl Serializer for PackageSerializer {
         variant: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        Ok(CompoundObjects { name: Some(variant.to_string()), data: HashMap::with_capacity(len) })
+        Ok(CompoundObjects {
+            name: Some(variant.to_string()),
+            data: HashMap::with_capacity(len),
+        })
     }
-} 
-
+}
 
 impl SerializeSeq for CompoundArray {
     type Ok = Package;
@@ -517,7 +566,8 @@ impl SerializeSeq for CompoundArray {
 
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         let value = value.serialize(PackageSerializer)?;
         self.data.push(value);
         Ok(())
@@ -534,7 +584,8 @@ impl SerializeTuple for CompoundArray {
 
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         let value = value.serialize(PackageSerializer)?;
         self.data.push(value);
         Ok(())
@@ -551,7 +602,8 @@ impl SerializeTupleStruct for CompoundArray {
 
     fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         let value = value.serialize(PackageSerializer)?;
         self.data.push(value);
         Ok(())
@@ -563,7 +615,9 @@ impl SerializeTupleStruct for CompoundArray {
             let data = HashMap::from([(name, data)]);
             Ok(Package::Object(data))
         } else {
-            Err(PackageSerializerError { cause: "Cannot serialize a Tuple Struct without the name".to_string() })
+            Err(PackageSerializerError {
+                cause: "Cannot serialize a Tuple Struct without the name".to_string(),
+            })
         }
     }
 }
@@ -574,7 +628,8 @@ impl SerializeTupleVariant for CompoundArray {
 
     fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         let value = value.serialize(PackageSerializer)?;
         self.data.push(value);
         Ok(())
@@ -586,7 +641,9 @@ impl SerializeTupleVariant for CompoundArray {
             let data = HashMap::from([(name, data)]);
             Ok(Package::Object(data))
         } else {
-            Err(PackageSerializerError { cause: "Cannot serialize a Tuple variant without the name".to_string() })
+            Err(PackageSerializerError {
+                cause: "Cannot serialize a Tuple variant without the name".to_string(),
+            })
         }
     }
 }
@@ -596,13 +653,13 @@ impl SerializeMap for CompoundObjects {
     type Error = PackageSerializerError;
 
     fn serialize_entry<K: ?Sized, V: ?Sized>(
-            &mut self,
-            key: &K,
-            value: &V,
-        ) -> Result<(), Self::Error>
-        where
-            K: serde::Serialize,
-            V: serde::Serialize, 
+        &mut self,
+        key: &K,
+        value: &V,
+    ) -> Result<(), Self::Error>
+    where
+        K: serde::Serialize,
+        V: serde::Serialize,
     {
         let key = key.serialize(MapKeySerializer)?;
         let value = value.serialize(PackageSerializer)?;
@@ -613,15 +670,17 @@ impl SerializeMap for CompoundObjects {
     fn end(self) -> Result<Self::Ok, Self::Error> {
         Ok(Package::Object(self.data))
     }
-    
+
     fn serialize_key<T: ?Sized>(&mut self, _key: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unimplemented!()
     }
     fn serialize_value<T: ?Sized>(&mut self, _value: &T) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         unimplemented!()
     }
 }
@@ -636,7 +695,8 @@ impl SerializeStruct for CompoundObjects {
         value: &T,
     ) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         let value = value.serialize(PackageSerializer)?;
         self.data.insert(key.to_owned(), value);
         Ok(())
@@ -657,7 +717,8 @@ impl SerializeStructVariant for CompoundObjects {
         value: &T,
     ) -> Result<(), Self::Error>
     where
-        T: serde::Serialize {
+        T: serde::Serialize,
+    {
         let value = value.serialize(PackageSerializer)?;
         self.data.insert(key.to_owned(), value);
         Ok(())

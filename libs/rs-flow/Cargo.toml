@@ -1,6 +1,6 @@
 [package]
 name = "rs-flow"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["Adlizm"]
 keywords = ["flow", "components"]
@@ -18,7 +18,7 @@ thiserror = "1.0.63"
 async-trait = { version = "0.1.73" }
 serde = { version = "1.0", features = ["derive"] }
 
-rs-flow-macros = "0.1.1"
+rs-flow-macros = { path = "../rs-flow-macros", version = "0.2.0" }
 
 [dev-dependencies]
 tokio = { version = "1.35.0", features = ["rt", "rt-multi-thread", "macros"] }
