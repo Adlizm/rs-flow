@@ -101,12 +101,12 @@ impl<G> Ctx<G> {
     }
 
     /// Interface tha provide a way to read the global data of the [Flow](crate::flow::Flow)
-    pub fn with_global<R>(&self, call: impl FnMut(&G) -> R) -> Result<R> {
+    pub fn with_global<R>(&self, call: impl FnOnce(&G) -> R) -> Result<R> {
         self.global.with_global(call)
     }
 
     /// Interface tha provide a way to read and modify the global data of the [Flow](crate::flow::Flow)
-    pub fn with_mut_global<R>(&self, call: impl FnMut(&mut G) -> R) -> Result<R> {
+    pub fn with_mut_global<R>(&self, call: impl FnOnce(&mut G) -> R) -> Result<R> {
         self.global.with_mut_global(call)
     }
 
