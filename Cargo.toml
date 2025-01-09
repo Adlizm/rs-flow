@@ -1,10 +1,9 @@
 [workspace.lints.rust]
-unsafe_code = "forbid"
 
 [workspace]
 resolver = "2"
 members = [
     # -- Libraries
-    "libs/rs-flow",          # core.
-    "libs/rs-flow-macros",   # macros.
+    "libs/rs-flow",        # core.
+    "libs/rs-flow-macros", # macros.
 ]

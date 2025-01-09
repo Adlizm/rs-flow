@@ -148,6 +148,7 @@ where
     /// # Error
     ///
     /// Error if the [Component::id] is already used
+    ///
     pub fn add_component(mut self, component: Component<G>) -> Result<Self> {
         if self.components.contains_key(&component.id) {
             return Err(Error::ComponentAlreadyExist { id: component.id }.into());
@@ -164,6 +165,7 @@ where
     /// - Error if the this [Flow] not have a [Component::id] used in [Connection]
     /// - Error if the [Component]'s used in [Connection] not have that Input/Output [Port](crate::ports::Port) defined.
     /// - Error if add a connection create a Loop
+    ///
     pub fn add_connection(mut self, connection: Connection) -> Result<Self> {
         if let Some(component) = self.components.get(&connection.from) {
             if !component.outputs.contains(connection.out_port) {

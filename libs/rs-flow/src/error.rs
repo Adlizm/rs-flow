@@ -25,8 +25,8 @@ pub enum Error {
     #[error("Component with id = {component:?} not have a Output = {out_port:?}")]
     OutPortNotFound { component: Id, out_port: PortId },
 
-    #[error("A queue of componenet id = {component:?} and port = {port:?} has not created, verify if a connection with this port exist")]
-    QueueNotCreated { component: Id, port: PortId },
+    #[error("Try recive on component id = {component:?} in ports = {ports:?}, buts ports not exist or repeted")]
+    InvalidMultipleRecivedPorts { component: Id, ports: Vec<PortId> },
 
     #[error("No packages were consumed from the component = {component:?}")]
     AnyPackageConsumed { component: Id },

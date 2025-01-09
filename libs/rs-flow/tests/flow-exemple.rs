@@ -42,7 +42,8 @@ impl ComponentSchema for Green {
             ctx.id(),
             ctx.cicle()
         );
-        while let Some(_) = ctx.receive(In) {}
+
+        let _ = ctx.receive_all(In);
 
         Ok(Next::Continue)
     }
@@ -62,7 +63,7 @@ impl ComponentSchema for Blue {
             ctx.cicle()
         );
 
-        while let Some(_) = ctx.receive(In) {}
+        let _ = ctx.receive_all(In);
         ctx.send(Out, Package::Empty);
 
         Ok(Next::Continue)

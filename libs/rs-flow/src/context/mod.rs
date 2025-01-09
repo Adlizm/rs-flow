@@ -84,7 +84,7 @@ impl<G> Ctxs<G> {
         for (point, mut packages) in packages_received.drain() {
             if let Some(ctx) = self.contexts.get_mut(&point.id()) {
                 if let Some(queue) = ctx.receive.get_mut(&point.port()) {
-                    queue.append(&mut packages);
+                    queue.push_all(&mut packages);
                 }
             }
         }
