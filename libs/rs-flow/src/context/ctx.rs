@@ -22,13 +22,6 @@ impl ReceiveQueue {
         *self = Self::Closed
     }
 
-    pub fn push(&mut self, package: Package) {
-        match self {
-            Self::Open(queue) => queue.push_back(package),
-            Self::Closed => {}
-        }
-    }
-
     pub fn push_all(&mut self, packages: &mut VecDeque<Package>) {
         match self {
             Self::Open(queue) => queue.append(packages),
