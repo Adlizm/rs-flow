@@ -3,23 +3,29 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::component::{Component, Id, Type};
 use crate::connection::{Connections, Point};
-use crate::context::global::Global;
-use crate::package::Package;
 
 mod ctx;
 pub use ctx::Ctx;
 
-pub(crate) mod global;
+mod global;
+pub use global::Global;
+pub(crate) use global::GlobalData;
 
-pub(crate) struct Ctxs<G> {
+pub(crate) struct Ctxs<G>
+where
+    G: Global,
+{
     connections: Connections,
     contexts: HashMap<Id, Ctx<G>>,
 }
-impl<G> Ctxs<G> {
+impl<G> Ctxs<G>
+where
+    G: Global,
+{
     pub(crate) fn new(
         components: &HashMap<Id, Component<G>>,
         connections: &Connections,
-        global: &Arc<Global<G>>,
+        global: &Arc<GlobalData<G>>,
     ) -> Self {
         let contexts = components
             .iter()
@@ -38,10 +44,10 @@ impl<G> Ctxs<G> {
 
     pub(crate) fn refresh_queues(&mut self) {
         // insert the packages in map or append with the exists packages
-        fn insert_or_append(
+        fn insert_or_append<G: Global>(
             point: Point,
-            mut packages: VecDeque<Package>,
-            packages_received: &mut HashMap<Point, VecDeque<Package>>,
+            mut packages: VecDeque<G::Package>,
+            packages_received: &mut HashMap<Point, VecDeque<G::Package>>,
         ) {
             packages_received
                 .entry(point)
@@ -49,7 +55,7 @@ impl<G> Ctxs<G> {
                 .or_insert(packages);
         }
 
-        let mut packages_received: HashMap<Point, VecDeque<Package>> = HashMap::new();
+        let mut packages_received: HashMap<Point, VecDeque<G::Package>> = HashMap::new();
 
         for (id, ctx) in self.contexts.iter_mut() {
             for (port, send_queue) in ctx.send.iter_mut() {
@@ -65,15 +71,15 @@ impl<G> Ctxs<G> {
                         0 => {}
                         1 => {
                             let to = to_ports[0].clone();
-                            insert_or_append(to, packages, &mut packages_received);
+                            insert_or_append::<G>(to, packages, &mut packages_received);
                         }
                         _ => {
                             for i in 1..to_ports.len() {
                                 let to = to_ports[i].clone();
-                                insert_or_append(to, packages.clone(), &mut packages_received);
+                                insert_or_append::<G>(to, packages.clone(), &mut packages_received);
                             }
                             let to = to_ports[0].clone();
-                            insert_or_append(to, packages, &mut packages_received);
+                            insert_or_append::<G>(to, packages, &mut packages_received);
                         }
                     }
                 }

@@ -3,8 +3,7 @@ use std::sync::Arc;
 
 use crate::component::Next;
 use crate::connection::{Connection, Connections};
-use crate::context::global::Global;
-use crate::context::Ctxs;
+use crate::context::{Ctxs, Global, GlobalData};
 use crate::error::{Error, Result, RunResult};
 use crate::prelude::{Component, Id};
 
@@ -56,23 +55,26 @@ use crate::prelude::{Component, Id};
 /// use rs_flow::prelude::*;
 ///
 /// struct Total {
-///    value: f64
+///    value: i32
 /// }
+/// impl Global for Total {
+///     type Package = i32
+/// }
+///
 ///
 /// #[derive(Inputs, Outputs)]
 /// struct DataNumber;
 ///
 ///
-/// struct One;
+/// struct Number(i32);
 ///
 /// #[async_trait]
-/// impl ComponentSchema for One {
+/// impl ComponentSchema<Total> for One {
 ///     type Inputs = ();
 ///     type Outputs = DataNumber;
 ///
-///     type Global = Total;
 ///     async fn run(&self, ctx: &mut Ctx<Total>) -> Result<Next> {
-///         ctx.send(DataNumber, 1.into());
+///         ctx.send(DataNumber, self.0);
 ///         Ok(Next::Continue)
 ///     }
 /// }
@@ -80,16 +82,13 @@ use crate::prelude::{Component, Id};
 /// struct Sum;
 ///
 /// #[async_trait]
-/// impl ComponentSchema for Sum {
+/// impl ComponentSchema<Total> for Sum {
 ///     type Inputs = DataNumber;
 ///     type Outputs = ();
 ///
-///     type Global = Total;
-///
 ///     async fn run(&self, ctx: &mut Ctx<Total>) -> Result<Next> {
-///         let mut sum: f64 = 0.0;
+///         let mut sum = 0;
 ///         while let Some(package) = ctx.receive(DataNumber) {
-///             let number = package.get_number()?;
 ///             sum += number;
 ///         }
 ///
@@ -102,8 +101,8 @@ use crate::prelude::{Component, Id};
 /// }
 ///
 /// tokio_test::block_on(async {
-///     let a = Component::new(1, One);
-///     let b = Component::new(2, One);
+///     let a = Component::new(1, Number(12));
+///     let b = Component::new(2, Number(24));
 ///     let sum = Component::new(3, Sum);
 ///
 ///     assert!(rs_flow::ports::Inputs::into_port(&DataNumber) == 0);
@@ -118,10 +117,10 @@ use crate::prelude::{Component, Id};
 ///         .add_component(sum).unwrap()
 ///         .add_connection(connection_a).unwrap()
 ///         .add_connection(connection_b).unwrap()
-///         .run(Total { value: 0.0 }).await
+///         .run(Total { value: 0}).await
 ///         .unwrap();
 ///
-///     assert!(total.value == 2.0);
+///     assert!(total.value == 36);
 /// });
 ///
 /// ```
@@ -133,7 +132,7 @@ pub struct Flow<G> {
 
 impl<G> Flow<G>
 where
-    G: Send + Sync + 'static,
+    G: Global,
 {
     /// Create a flow without components or connections
     pub fn new() -> Self {
@@ -211,7 +210,7 @@ where
     /// Panic if a component panic when [run](crate::component::ComponentSchema::run)
     ///
     pub async fn run(&self, global: G) -> RunResult<G> {
-        let global_arc = Arc::new(Global::from_data(global));
+        let global_arc = Arc::new(GlobalData::from_data(global));
 
         let mut contexts = Ctxs::new(&self.components, &self.connections, &global_arc);
 

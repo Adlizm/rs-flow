@@ -2,11 +2,15 @@ use std::{fmt::Debug, sync::RwLock};
 
 use crate::error::{Error, Result};
 
-pub(crate) struct Global<G>(RwLock<G>);
+pub trait Global: Send + Sync + 'static {
+    type Package: Clone + Debug + Send + Sync;
+}
 
-impl<G> Global<G> {
+pub(crate) struct GlobalData<G>(RwLock<G>);
+
+impl<G> GlobalData<G> {
     pub(crate) fn from_data(data: G) -> Self {
-        Global(RwLock::new(data))
+        Self(RwLock::new(data))
     }
 
     pub(crate) fn with_global<R>(&self, call: impl FnOnce(&G) -> R) -> Result<R> {
@@ -28,8 +32,8 @@ impl<G> Global<G> {
     }
 }
 
-impl<GD> Debug for Global<GD> {
+impl<G> Debug for GlobalData<G> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Global").finish()
+        f.debug_tuple("GlobalData").finish()
     }
 }

@@ -1,5 +1,10 @@
 use rs_flow::prelude::*;
 
+struct Nothing;
+impl Global for Nothing {
+    type Package = ();
+}
+
 #[derive(Inputs)]
 struct In; // A unique port of input
 
@@ -11,32 +16,34 @@ struct Green;
 struct Blue;
 
 #[async_trait]
-impl ComponentSchema for Red {
+impl<G> ComponentSchema<G> for Red
+where
+    G: Global<Package = ()>,
+{
     type Inputs = ();
     type Outputs = Out;
 
-    type Global = ();
-
-    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
         println!(
             "Runinng component Red({}) in {} cicle",
             ctx.id(),
             ctx.cicle()
         );
 
-        ctx.send(Out, Package::Empty);
+        ctx.send(Out, ());
         Ok(Next::Continue)
     }
 }
 
 #[async_trait]
-impl ComponentSchema for Green {
+impl<G> ComponentSchema<G> for Green
+where
+    G: Global<Package = ()>,
+{
     type Inputs = In;
     type Outputs = ();
 
-    type Global = ();
-
-    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
         println!(
             "Runinng component Green({}) in {} cicle",
             ctx.id(),
@@ -50,13 +57,14 @@ impl ComponentSchema for Green {
 }
 
 #[async_trait]
-impl ComponentSchema for Blue {
+impl<G> ComponentSchema<G> for Blue
+where
+    G: Global<Package = ()>,
+{
     type Inputs = In;
     type Outputs = Out;
 
-    type Global = ();
-
-    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
         println!(
             "Runinng component Blue({}) in {} cicle",
             ctx.id(),
@@ -64,7 +72,7 @@ impl ComponentSchema for Blue {
         );
 
         let _ = ctx.receive_all(In);
-        ctx.send(Out, Package::Empty);
+        ctx.send(Out, ());
 
         Ok(Next::Continue)
     }
@@ -110,7 +118,7 @@ async fn flow_example() -> Result<()> {
 
     println!("Initing Flow::run");
 
-    let _ = flow.run(()).await?;
+    let _ = flow.run(Nothing).await?;
 
     println!("Flow::run finished");
 

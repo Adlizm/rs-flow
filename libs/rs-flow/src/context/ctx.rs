@@ -1,19 +1,18 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
-use crate::context::global::Global;
+use crate::context::global::{Global, GlobalData};
 
 use crate::component::{Id, Type};
 use crate::error::{Error, Result};
-use crate::package::Package;
 use crate::ports::{Inputs, Outputs, PortId};
 use crate::prelude::Component;
 
-pub(crate) enum ReceiveQueue {
+pub(crate) enum ReceiveQueue<P> {
     Closed,
-    Open(VecDeque<Package>),
+    Open(VecDeque<P>),
 }
-impl ReceiveQueue {
+impl<P> ReceiveQueue<P> {
     pub fn new() -> Self {
         Self::Open(VecDeque::new())
     }
@@ -22,7 +21,7 @@ impl ReceiveQueue {
         *self = Self::Closed
     }
 
-    pub fn push_all(&mut self, packages: &mut VecDeque<Package>) {
+    pub fn push_all(&mut self, packages: &mut VecDeque<P>) {
         match self {
             Self::Open(queue) => queue.append(packages),
             Self::Closed => {}
@@ -36,17 +35,17 @@ impl ReceiveQueue {
         }
     }
 
-    pub fn get_next(&mut self) -> Option<Package> {
+    pub fn get_next(&mut self) -> Option<P> {
         match self {
             Self::Open(queue) => queue.pop_front(),
             Self::Closed => None,
         }
     }
 
-    pub fn get_all(&mut self) -> Vec<Package> {
+    pub fn get_all(&mut self) -> Vec<P> {
         match self {
             Self::Open(queue) => {
-                let mut packages = VecDeque::<Package>::new();
+                let mut packages = VecDeque::<P>::new();
                 std::mem::swap(queue, &mut packages);
 
                 packages.into()
@@ -67,19 +66,25 @@ impl ReceiveQueue {
 /// Provide a interface to send and recieve [Package]'s to/from others [Component]'s
 /// and access to read and modify the global data of the [Flow](crate::flow::Flow).
 ///
-pub struct Ctx<G> {
+pub struct Ctx<G>
+where
+    G: Global,
+{
     pub(crate) id: Id,
     pub(crate) ty: Type,
-    pub(crate) send: HashMap<PortId, VecDeque<Package>>,
-    pub(crate) receive: HashMap<PortId, ReceiveQueue>,
+    pub(crate) send: HashMap<PortId, VecDeque<G::Package>>,
+    pub(crate) receive: HashMap<PortId, ReceiveQueue<G::Package>>,
     pub(crate) consumed: bool,
     pub(crate) cicle: u32,
 
-    global: Arc<Global<G>>,
+    global: Arc<GlobalData<G>>,
 }
 
-impl<G> Ctx<G> {
-    pub(crate) fn from(component: &Component<G>, global: &Arc<Global<G>>) -> Self {
+impl<G> Ctx<G>
+where
+    G: Global,
+{
+    pub(crate) fn from(component: &Component<G>, global: &Arc<GlobalData<G>>) -> Self {
         let send = HashMap::from_iter(
             component
                 .outputs
@@ -137,11 +142,11 @@ impl<G> Ctx<G> {
     ///
     /// Panic if recieve from a [Input](crate::ports::Inputs) Port that not exist in this [Component]
     ///
-    pub fn receive<I: Inputs>(&mut self, in_port: I) -> Option<Package> {
+    pub fn receive<I: Inputs>(&mut self, in_port: I) -> Option<G::Package> {
         let port = in_port.into_port();
         self.receive_(port)
     }
-    fn receive_(&mut self, port: PortId) -> Option<Package> {
+    fn receive_(&mut self, port: PortId) -> Option<G::Package> {
         let package = self
             .receive
             .get_mut(&port)
@@ -164,11 +169,11 @@ impl<G> Ctx<G> {
     ///
     /// Panic if recieve from a [Input](crate::ports::Inputs) Port that not exist in this [Component]
     ///
-    pub fn receive_all<I: Inputs>(&mut self, in_port: I) -> Vec<Package> {
+    pub fn receive_all<I: Inputs>(&mut self, in_port: I) -> Vec<G::Package> {
         let port = in_port.into_port();
         self.receive_all_(port)
     }
-    fn receive_all_(&mut self, port: PortId) -> Vec<Package> {
+    fn receive_all_(&mut self, port: PortId) -> Vec<G::Package> {
         self.consumed = true;
 
         self.receive
@@ -195,11 +200,11 @@ impl<G> Ctx<G> {
     pub fn receive_many<I: Inputs, const N: usize>(
         &mut self,
         ports: [I; N],
-    ) -> Option<[Package; N]> {
+    ) -> Option<[G::Package; N]> {
         let ports_ids: [PortId; N] = ports.map(|port| port.into_port());
         self.receive_many_(ports_ids)
     }
-    fn receive_many_<const N: usize>(&mut self, ports: [PortId; N]) -> Option<[Package; N]> {
+    fn receive_many_<const N: usize>(&mut self, ports: [PortId; N]) -> Option<[G::Package; N]> {
         let mut ports_ref = [&0; N];
         for i in 0..N {
             ports_ref[i] = &ports[i];
@@ -220,9 +225,9 @@ impl<G> Ctx<G> {
 
         let mut result = Vec::with_capacity(N);
         for i in 0..N {
-            result.push(queues[i].get_next().unwrap());
+            result.push(queues[i].get_next()?);
         }
-        Some(result.try_into().unwrap())
+        Some(result.try_into().expect("Here vec already has N elements"))
     }
 
     /// Send a [Package] to a [Port](crate::ports::Port), if one [Component] is connected to this port than he
@@ -234,11 +239,11 @@ impl<G> Ctx<G> {
     ///
     /// Panic if send to a [Output](crate::ports::Outputs) Port that not exist in this [Component]
     ///
-    pub fn send<O: Outputs>(&mut self, out_port: O, package: Package) {
+    pub fn send<O: Outputs, P: Into<G::Package>>(&mut self, out_port: O, package: P) {
         let port = out_port.into_port();
-        self.send_(port, package);
+        self.send_(port, package.into());
     }
-    fn send_(&mut self, port: PortId, package: Package) {
+    fn send_(&mut self, port: PortId, package: G::Package) {
         self.send
             .get_mut(&port)
             .ok_or(Error::OutPortNotFound {
@@ -258,11 +263,11 @@ impl<G> Ctx<G> {
     ///
     /// Panic if send to a [Output](crate::ports::Outputs) Port that not exist in this [Component]
     ///
-    pub fn send_all<O: Outputs>(&mut self, out_port: O, packages: Vec<Package>) {
+    pub fn send_all<O: Outputs>(&mut self, out_port: O, packages: Vec<G::Package>) {
         let port = out_port.into_port();
         self.send_all_(port, packages);
     }
-    fn send_all_(&mut self, port: PortId, packages: Vec<Package>) {
+    fn send_all_(&mut self, port: PortId, packages: Vec<G::Package>) {
         let queue = self
             .send
             .get_mut(&port)

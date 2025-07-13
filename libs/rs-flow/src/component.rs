@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::connection::Point;
-use crate::context::Ctx;
+use crate::context::{Ctx, Global};
 use crate::error::RunResult as Result;
 use crate::ports::{Inputs, Outputs, PortId, Ports};
 
@@ -91,13 +91,14 @@ pub type Id = usize;
 /// ```
 ///
 #[async_trait]
-pub trait ComponentSchema: Send + Sync + 'static {
-    type Global: Send + Sync;
-
+pub trait ComponentSchema<G>: Send + Sync + 'static
+where
+    G: Global,
+{
     type Inputs: Inputs;
     type Outputs: Outputs;
 
-    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next>;
+    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next>;
 
     fn description() -> &'static str {
         ""
@@ -105,21 +106,21 @@ pub trait ComponentSchema: Send + Sync + 'static {
 }
 
 #[async_trait]
-pub(crate) trait ComponentRun: Send + Sync + 'static {
-    type Global: Send + Sync;
-
-    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next>;
+pub(crate) trait ComponentRun<G>: Send + Sync + 'static
+where
+    G: Global,
+{
+    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next>;
 }
 
 #[async_trait]
-impl<T: Sized> ComponentRun for T
+impl<T: Sized, G> ComponentRun<G> for T
 where
-    T: ComponentSchema,
+    T: ComponentSchema<G>,
+    G: Global,
 {
-    type Global = T::Global;
-
     #[inline(always)]
-    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
         self.run(ctx).await
     }
 }
@@ -167,17 +168,20 @@ where
 /// ```
 pub struct Component<G> {
     pub(crate) id: Id,
-    pub(crate) data: Box<dyn ComponentRun<Global = G>>,
+    pub(crate) data: Box<dyn ComponentRun<G>>,
     pub(crate) ty: Type,
     pub(crate) inputs: Ports,
     pub(crate) outputs: Ports,
 }
 
-impl<G> Component<G> {
+impl<G> Component<G>
+where
+    G: Global,
+{
     /// Create a component with Type::Lazy
     pub fn new<T>(id: Id, data: T) -> Self
     where
-        T: ComponentSchema<Global = G>,
+        T: ComponentSchema<G>,
     {
         Self {
             id,
@@ -190,7 +194,7 @@ impl<G> Component<G> {
     /// Create a component with Type::Eager
     pub fn eager<T>(id: Id, data: T) -> Self
     where
-        T: ComponentSchema<Global = G>,
+        T: ComponentSchema<G>,
     {
         Self {
             id,

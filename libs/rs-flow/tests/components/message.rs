@@ -1,7 +1,5 @@
 use rs_flow::prelude::*;
 
-use super::CounterLogs;
-
 #[derive(Outputs)]
 pub enum Out {
     #[description("Message send to print in log")]
@@ -13,7 +11,7 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new<'a>(message: &'a str) -> Self {
+    pub fn new(message: &str) -> Self {
         Self {
             message: message.to_string(),
         }
@@ -21,14 +19,15 @@ impl Message {
 }
 
 #[async_trait]
-impl ComponentSchema for Message {
-    type Global = CounterLogs;
-
+impl<G> ComponentSchema<G> for Message
+where
+    G: Global<Package = String>,
+{
     type Inputs = ();
     type Outputs = Out;
 
-    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
-        ctx.send(Out::Message, self.message.clone().into());
+    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
+        ctx.send(Out::Message, self.message.clone());
         Ok(Next::Continue)
     }
 }

@@ -11,15 +11,13 @@ pub enum In {
 pub struct Log;
 
 #[async_trait]
-impl ComponentSchema for Log {
-    type Global = CounterLogs;
-
+impl ComponentSchema<CounterLogs> for Log {
     type Inputs = In;
     type Outputs = ();
 
-    async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<CounterLogs>) -> Result<Next> {
         if let Some(package) = ctx.receive(In::Message) {
-            println!("{:#}", package.get_string()?);
+            println!("{package}");
 
             ctx.with_mut_global(|global| {
                 global.count += 1;

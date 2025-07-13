@@ -33,6 +33,7 @@ pub mod prelude {
     pub use crate::package::Package;
     pub use crate::ports::*;
 
+    pub use crate::context::Global;
     pub use crate::error::{Error, RunResult as Result};
     pub use crate::Ctx;
     pub use async_trait::async_trait;
