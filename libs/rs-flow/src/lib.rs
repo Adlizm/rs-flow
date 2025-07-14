@@ -6,11 +6,7 @@ pub use flow::Flow;
 mod error;
 pub use error::{Error, RunResult as Result};
 
-mod context;
-pub use context::Ctx;
-
-mod package;
-pub use package::Package;
+pub mod context;
 
 /// Structs for component infos and the trait [ComponentSchema](crate::component::ComponentSchema)
 pub mod component;
@@ -30,11 +26,9 @@ pub mod prelude {
     pub use crate::connection::Connection;
     pub use crate::flow::Flow;
     pub use crate::macros::*;
-    pub use crate::package::Package;
     pub use crate::ports::*;
 
-    pub use crate::context::Global;
+    pub use crate::context::{Ctx, Global};
     pub use crate::error::{Error, RunResult as Result};
-    pub use crate::Ctx;
     pub use async_trait::async_trait;
 }

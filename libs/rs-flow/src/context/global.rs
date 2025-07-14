@@ -28,7 +28,7 @@ impl<G> GlobalData<G> {
     }
 
     pub(crate) fn take(self) -> G {
-        self.0.into_inner().expect("Global have multiple owners")
+        self.0.into_inner().expect("Global has multiple owners")
     }
 }
 
