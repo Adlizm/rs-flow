@@ -1,39 +1,59 @@
-use std::{fmt::Debug, sync::RwLock};
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+    fmt::Debug,
+    sync::RwLock,
+};
 
-use crate::error::{Error, Result};
-
-pub trait Global: Send + Sync + 'static {
-    type Package: Clone + Debug + Send + Sync;
+#[derive(Debug, Default)]
+pub struct Global {
+    vars: HashMap<TypeId, RwLock<Box<dyn Any + Send + Sync>>>,
 }
 
-pub(crate) struct GlobalData<G>(RwLock<G>);
+impl Global {
+    pub fn add<T: Any + Send + Sync>(mut self, value: T) -> Self {
+        self.vars
+            .entry(value.type_id())
+            .insert_entry(RwLock::new(Box::new(value)));
 
-impl<G> GlobalData<G> {
-    pub(crate) fn from_data(data: G) -> Self {
-        Self(RwLock::new(data))
+        self
     }
 
-    pub(crate) fn with_global<R>(&self, call: impl FnOnce(&G) -> R) -> Result<R> {
-        match self.0.read() {
-            Ok(global) => Ok(call(&global)),
-            Err(_) => Err(Error::CannotAccessGlobal),
-        }
+    pub fn remove<T: Any + Send + Sync>(&mut self) -> Option<T> {
+        let any = self.vars.remove(&TypeId::of::<T>())?;
+
+        // We have &mut self, then anyone have the &self to lock this value
+        // (only us), since anyone hold the lock, then we can destroiy the RwLock
+        // to get the inner value T;
+        //
+        // Is ok to panic with the lock is poisoned, cause with is poisoned one
+        // of components have panic using this value.
+        let value = any.into_inner().unwrap().downcast::<T>().unwrap();
+
+        Some(*value)
     }
 
-    pub(crate) fn with_mut_global<R>(&self, call: impl FnOnce(&mut G) -> R) -> Result<R> {
-        match self.0.write() {
-            Ok(mut global) => Ok(call(&mut global)),
-            Err(_) => Err(Error::CannotAccessGlobal),
-        }
+    pub fn with<T, F, R>(&self, f: F) -> Option<R>
+    where
+        T: Any + Send + Sync,
+        F: FnOnce(&T) -> R,
+    {
+        let guard = self.vars.get(&TypeId::of::<T>())?.read().unwrap();
+        let boxv = guard.as_ref();
+        let var = boxv.downcast_ref::<T>().unwrap();
+
+        Some(f(var))
     }
 
-    pub(crate) fn take(self) -> G {
-        self.0.into_inner().expect("Global has multiple owners")
-    }
-}
+    pub fn with_mut<T, F, R>(&self, f: F) -> Option<R>
+    where
+        T: Any + Send + Sync,
+        F: FnOnce(&mut T) -> R,
+    {
+        let mut guard = self.vars.get(&TypeId::of::<T>())?.write().unwrap();
+        let boxv = guard.as_mut();
+        let var = boxv.downcast_mut::<T>().unwrap();
 
-impl<G> Debug for GlobalData<G> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("GlobalData").finish()
+        Some(f(var))
     }
 }

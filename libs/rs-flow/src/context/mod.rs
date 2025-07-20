@@ -9,45 +9,39 @@ pub use ctx::Ctx;
 
 mod global;
 pub use global::Global;
-pub(crate) use global::GlobalData;
 
-pub(crate) struct Ctxs<G>
-where
-    G: Global,
-{
+pub(crate) struct Ctxs<V> {
     connections: Connections,
-    contexts: HashMap<Id, Ctx<G>>,
+    contexts: HashMap<Id, Ctx<V>>,
 }
-impl<G> Ctxs<G>
+impl<V> Ctxs<V>
 where
-    G: Global,
+    V: Send + Clone,
 {
     pub(crate) fn new(
-        components: &HashMap<Id, Component<G>>,
+        components: &HashMap<Id, Component<V>>,
         connections: &Connections,
-        global: &Arc<GlobalData<G>>,
+        global: &Arc<Global>,
     ) -> Self {
-        let contexts = components
-            .iter()
-            .map(|(id, component)| (*id, Ctx::from(component, &global)))
-            .collect();
-
         Self {
             connections: connections.clone(),
-            contexts,
+            contexts: components
+                .iter()
+                .map(|(id, component)| (*id, Ctx::from(component, Arc::clone(global))))
+                .collect(),
         }
     }
 
-    pub(crate) fn borrow(&mut self, id: Id) -> Option<Ctx<G>> {
+    pub(crate) fn borrow(&mut self, id: Id) -> Option<Ctx<V>> {
         self.contexts.remove(&id)
     }
 
     pub(crate) fn refresh_queues(&mut self) {
         // insert the packages in map or append with the exists packages
-        fn insert_or_append<G: Global>(
+        fn insert_or_append<V>(
             point: Point,
-            mut packages: VecDeque<G::Package>,
-            packages_received: &mut HashMap<Point, VecDeque<G::Package>>,
+            mut packages: VecDeque<V>,
+            packages_received: &mut HashMap<Point, VecDeque<V>>,
         ) {
             packages_received
                 .entry(point)
@@ -55,7 +49,7 @@ where
                 .or_insert(packages);
         }
 
-        let mut packages_received: HashMap<Point, VecDeque<G::Package>> = HashMap::new();
+        let mut packages_received: HashMap<Point, VecDeque<V>> = HashMap::new();
 
         for (id, ctx) in self.contexts.iter_mut() {
             for (port, send_queue) in ctx.send.iter_mut() {
@@ -71,15 +65,15 @@ where
                         0 => {}
                         1 => {
                             let to = to_ports[0].clone();
-                            insert_or_append::<G>(to, packages, &mut packages_received);
+                            insert_or_append::<V>(to, packages, &mut packages_received);
                         }
                         _ => {
                             for i in 1..to_ports.len() {
                                 let to = to_ports[i].clone();
-                                insert_or_append::<G>(to, packages.clone(), &mut packages_received);
+                                insert_or_append::<V>(to, packages.clone(), &mut packages_received);
                             }
                             let to = to_ports[0].clone();
-                            insert_or_append::<G>(to, packages, &mut packages_received);
+                            insert_or_append::<V>(to, packages, &mut packages_received);
                         }
                     }
                 }
@@ -96,7 +90,7 @@ where
         }
     }
 
-    pub(crate) fn give_back(&mut self, ctx: Ctx<G>) {
+    pub(crate) fn give_back(&mut self, ctx: Ctx<V>) {
         self.contexts.insert(ctx.id, ctx);
     }
 

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::component::Next;
 use crate::connection::{Connection, Connections};
-use crate::context::{Ctxs, Global, GlobalData};
+use crate::context::{Ctxs, Global};
 use crate::error::{Error, Result, RunResult};
 use crate::prelude::{Component, Id};
 
@@ -125,15 +125,12 @@ use crate::prelude::{Component, Id};
 ///
 /// ```
 ///
-pub struct Flow<G> {
-    components: HashMap<Id, Component<G>>,
+pub struct Flow<V> {
+    components: HashMap<Id, Component<V>>,
     connections: Connections,
 }
 
-impl<G> Flow<G>
-where
-    G: Global,
-{
+impl<V> Flow<V> {
     /// Create a flow without components or connections
     pub fn new() -> Self {
         Self {
@@ -148,7 +145,7 @@ where
     ///
     /// Error if the [Component::id] is already used
     ///
-    pub fn add_component(mut self, component: Component<G>) -> Result<Self> {
+    pub fn add_component(mut self, component: Component<V>) -> Result<Self> {
         if self.components.contains_key(&component.id) {
             return Err(Error::ComponentAlreadyExist { id: component.id }.into());
         }
@@ -197,7 +194,12 @@ where
 
         Ok(self)
     }
+}
 
+impl<V> Flow<V>
+where
+    V: Send + Clone + 'static,
+{
     ///
     /// Run this Flow
     ///
@@ -209,8 +211,8 @@ where
     ///
     /// Panic if a component panic when [run](crate::component::ComponentSchema::run)
     ///
-    pub async fn run(&self, global: G) -> RunResult<G> {
-        let global_arc = Arc::new(GlobalData::from_data(global));
+    pub async fn run(&self, global: Global) -> RunResult<Global> {
+        let global_arc = Arc::new(global);
 
         let mut contexts = Ctxs::new(&self.components, &self.connections, &global_arc);
 
@@ -263,8 +265,7 @@ where
         drop(contexts);
 
         let global = Arc::try_unwrap(global_arc)
-            .expect("Global no have multiples references, becaurse contexts already drop")
-            .take();
+            .expect("Global no have multiples references, because contexts already drop");
         Ok(global)
     }
 }

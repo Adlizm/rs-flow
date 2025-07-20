@@ -19,14 +19,11 @@ impl Message {
 }
 
 #[async_trait]
-impl<G> ComponentSchema<G> for Message
-where
-    G: Global<Package = String>,
-{
+impl ComponentSchema<String> for Message {
     type Inputs = ();
     type Outputs = Out;
 
-    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<String>) -> Result<Next> {
         ctx.send(Out::Message, self.message.clone());
         Ok(Next::Continue)
     }

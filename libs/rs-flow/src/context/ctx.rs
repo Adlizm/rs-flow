@@ -1,10 +1,10 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
-use crate::context::global::{Global, GlobalData};
+use crate::context::global::Global;
 
 use crate::component::{Id, Type};
-use crate::error::{Error, Result};
+use crate::error::Error;
 use crate::ports::{Inputs, Outputs, PortId};
 use crate::prelude::Component;
 
@@ -66,25 +66,19 @@ impl<P> ReceiveQueue<P> {
 /// Provide a interface to send and recieve [Package]'s to/from others [Component]'s
 /// and access to read and modify the global data of the [Flow](crate::flow::Flow).
 ///
-pub struct Ctx<G>
-where
-    G: Global,
-{
+pub struct Ctx<V> {
     pub(crate) id: Id,
     pub(crate) ty: Type,
-    pub(crate) send: HashMap<PortId, VecDeque<G::Package>>,
-    pub(crate) receive: HashMap<PortId, ReceiveQueue<G::Package>>,
+    pub(crate) send: HashMap<PortId, VecDeque<V>>,
+    pub(crate) receive: HashMap<PortId, ReceiveQueue<V>>,
     pub(crate) consumed: bool,
     pub(crate) cicle: u32,
 
-    global: Arc<GlobalData<G>>,
+    pub global: Arc<Global>,
 }
 
-impl<G> Ctx<G>
-where
-    G: Global,
-{
-    pub(crate) fn from(component: &Component<G>, global: &Arc<GlobalData<G>>) -> Self {
+impl<V> Ctx<V> {
+    pub(crate) fn from(component: &Component<V>, global: Arc<Global>) -> Self {
         let send = HashMap::from_iter(
             component
                 .outputs
@@ -104,7 +98,7 @@ where
             receive,
             consumed: false,
             cicle: 0,
-            global: global.clone(),
+            global,
         }
     }
 
@@ -142,11 +136,11 @@ where
     ///
     /// Panic if recieve from a [Input](crate::ports::Inputs) Port that not exist in this [Component]
     ///
-    pub fn receive<I: Inputs>(&mut self, in_port: I) -> Option<G::Package> {
+    pub fn receive<I: Inputs>(&mut self, in_port: I) -> Option<V> {
         let port = in_port.into_port();
         self.receive_(port)
     }
-    fn receive_(&mut self, port: PortId) -> Option<G::Package> {
+    fn receive_(&mut self, port: PortId) -> Option<V> {
         let package = self
             .receive
             .get_mut(&port)
@@ -169,11 +163,11 @@ where
     ///
     /// Panic if recieve from a [Input](crate::ports::Inputs) Port that not exist in this [Component]
     ///
-    pub fn receive_all<I: Inputs>(&mut self, in_port: I) -> Vec<G::Package> {
+    pub fn receive_all<I: Inputs>(&mut self, in_port: I) -> Vec<V> {
         let port = in_port.into_port();
         self.receive_all_(port)
     }
-    fn receive_all_(&mut self, port: PortId) -> Vec<G::Package> {
+    fn receive_all_(&mut self, port: PortId) -> Vec<V> {
         self.consumed = true;
 
         self.receive
@@ -193,18 +187,15 @@ where
     ///
     /// # Panics
     ///
-    /// Panic any of [Input](crate::ports::Inputs) Port that exist in this [Component]
+    /// Panic any of [Input](crate::ports::Inputs) Port not exist in this [Component]
     ///
     /// Panic any of [Input](crate::ports::Inputs) Port is repeated
     ///
-    pub fn receive_many<I: Inputs, const N: usize>(
-        &mut self,
-        ports: [I; N],
-    ) -> Option<[G::Package; N]> {
+    pub fn receive_many<I: Inputs, const N: usize>(&mut self, ports: [I; N]) -> Option<[V; N]> {
         let ports_ids: [PortId; N] = ports.map(|port| port.into_port());
         self.receive_many_(ports_ids)
     }
-    fn receive_many_<const N: usize>(&mut self, ports: [PortId; N]) -> Option<[G::Package; N]> {
+    fn receive_many_<const N: usize>(&mut self, ports: [PortId; N]) -> Option<[V; N]> {
         let mut ports_ref = [&0; N];
         for i in 0..N {
             ports_ref[i] = &ports[i];
@@ -212,12 +203,13 @@ where
 
         let queues = self
             .receive
-            .get_many_mut(ports_ref)
+            .get_disjoint_mut(ports_ref)
+            .transpose()
             .ok_or(Error::InvalidMultipleRecivedPorts {
                 component: self.id,
                 ports: ports.to_vec(),
             })
-            .expect("Already checked that queues exist");
+            .unwrap();
 
         if queues.iter().any(|queue| queue.is_empty()) {
             return None;
@@ -227,7 +219,12 @@ where
         for i in 0..N {
             result.push(queues[i].get_next()?);
         }
-        Some(result.try_into().expect("Here vec already has N elements"))
+        Some(
+            result
+                .try_into()
+                .map_err(|_| ())
+                .expect("Here vec already has N elements"),
+        )
     }
 
     /// Send a [Package] to a [Port](crate::ports::Port), if one [Component] is connected to this port than he
@@ -239,11 +236,11 @@ where
     ///
     /// Panic if send to a [Output](crate::ports::Outputs) Port that not exist in this [Component]
     ///
-    pub fn send<O: Outputs, P: Into<G::Package>>(&mut self, out_port: O, package: P) {
+    pub fn send<O: Outputs, P: Into<V>>(&mut self, out_port: O, package: P) {
         let port = out_port.into_port();
         self.send_(port, package.into());
     }
-    fn send_(&mut self, port: PortId, package: G::Package) {
+    fn send_(&mut self, port: PortId, package: V) {
         self.send
             .get_mut(&port)
             .ok_or(Error::OutPortNotFound {
@@ -263,11 +260,11 @@ where
     ///
     /// Panic if send to a [Output](crate::ports::Outputs) Port that not exist in this [Component]
     ///
-    pub fn send_all<O: Outputs>(&mut self, out_port: O, packages: Vec<G::Package>) {
+    pub fn send_all<O: Outputs>(&mut self, out_port: O, packages: Vec<V>) {
         let port = out_port.into_port();
         self.send_all_(port, packages);
     }
-    fn send_all_(&mut self, port: PortId, packages: Vec<G::Package>) {
+    fn send_all_(&mut self, port: PortId, packages: Vec<V>) {
         let queue = self
             .send
             .get_mut(&port)
@@ -278,16 +275,6 @@ where
             .unwrap();
 
         queue.extend(packages.into_iter());
-    }
-
-    /// Interface tha provide a way to read the global data of the [Flow](crate::flow::Flow)
-    pub fn with_global<R>(&self, call: impl FnOnce(&G) -> R) -> Result<R> {
-        self.global.with_global(call)
-    }
-
-    /// Interface tha provide a way to read and modify the global data of the [Flow](crate::flow::Flow)
-    pub fn with_mut_global<R>(&self, call: impl FnOnce(&mut G) -> R) -> Result<R> {
-        self.global.with_mut_global(call)
     }
 
     #[inline]

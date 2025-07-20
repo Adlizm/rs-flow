@@ -30,7 +30,4 @@ pub enum Error {
 
     #[error("No packages were consumed from the component = {component:?}")]
     AnyPackageConsumed { component: Id },
-
-    #[error("The global data could not be accessed")]
-    CannotAccessGlobal,
 }

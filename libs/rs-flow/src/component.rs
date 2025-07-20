@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::connection::Point;
-use crate::context::{Ctx, Global};
+use crate::context::Ctx;
 use crate::error::RunResult as Result;
 use crate::ports::{Inputs, Outputs, PortId, Ports};
 
@@ -91,14 +91,11 @@ pub type Id = usize;
 /// ```
 ///
 #[async_trait]
-pub trait ComponentSchema<G>: Send + Sync + 'static
-where
-    G: Global,
-{
+pub trait ComponentSchema<V>: Send + Sync + 'static {
     type Inputs: Inputs;
     type Outputs: Outputs;
 
-    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next>;
+    async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next>;
 
     fn description() -> &'static str {
         ""
@@ -106,21 +103,18 @@ where
 }
 
 #[async_trait]
-pub(crate) trait ComponentRun<G>: Send + Sync + 'static
-where
-    G: Global,
-{
-    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next>;
+pub(crate) trait ComponentRun<V>: Send + Sync + 'static {
+    async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next>;
 }
 
 #[async_trait]
-impl<T: Sized, G> ComponentRun<G> for T
+impl<T: Sized, V> ComponentRun<V> for T
 where
-    T: ComponentSchema<G>,
-    G: Global,
+    V: Send,
+    T: ComponentSchema<V>,
 {
     #[inline(always)]
-    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next> {
         self.run(ctx).await
     }
 }
@@ -146,13 +140,11 @@ where
 /// struct Nothing;
 ///
 /// #[async_trait]
-/// impl ComponentSchema for Nothing {
+/// impl ComponentSchema<()> for Nothing {
 ///     type Inputs = In;
 ///     type Outputs = Out;
 ///
-///     type Global = ();
-///
-///     async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
+///     async fn run(&self, ctx: &mut Ctx<()>) -> Result<Next> {
 ///         return Ok(Next::Continue);
 ///     }
 /// }
@@ -166,22 +158,22 @@ where
 /// assert_eq!(connection, Connection::new(1, 0, 2, 0));
 ///
 /// ```
-pub struct Component<G> {
+pub struct Component<V> {
     pub(crate) id: Id,
-    pub(crate) data: Box<dyn ComponentRun<G>>,
+    pub(crate) data: Box<dyn ComponentRun<V>>,
     pub(crate) ty: Type,
     pub(crate) inputs: Ports,
     pub(crate) outputs: Ports,
 }
 
-impl<G> Component<G>
+impl<V> Component<V>
 where
-    G: Global,
+    V: Send + Clone,
 {
     /// Create a component with Type::Lazy
     pub fn new<T>(id: Id, data: T) -> Self
     where
-        T: ComponentSchema<G>,
+        T: ComponentSchema<V>,
     {
         Self {
             id,
@@ -194,7 +186,7 @@ where
     /// Create a component with Type::Eager
     pub fn eager<T>(id: Id, data: T) -> Self
     where
-        T: ComponentSchema<G>,
+        T: ComponentSchema<V>,
     {
         Self {
             id,
@@ -204,7 +196,9 @@ where
             outputs: T::Outputs::PORTS,
         }
     }
+}
 
+impl<V> Component<V> {
     /// Return id of component
     pub fn id(&self) -> Id {
         self.id

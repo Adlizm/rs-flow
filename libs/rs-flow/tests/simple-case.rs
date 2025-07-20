@@ -25,12 +25,15 @@ async fn simple_case() -> Result<()> {
 
     let mut handlers = vec![];
     for _ in 0..10 {
-        let tflow = flow.clone();
+        let flow = flow.clone();
         let handler = tokio::spawn(async move {
-            let global = tflow.run(CounterLogs { count: 0 }).await.unwrap();
+            let global = Global::default().add(CounterLogs { count: 0 });
 
-            assert!(global.count == 2);
-            println!("{:?}", global);
+            let mut global = flow.run(global).await.unwrap();
+
+            let counter = global.remove::<CounterLogs>().unwrap();
+
+            assert!(counter.count == 2);
         });
         handlers.push(handler);
     }

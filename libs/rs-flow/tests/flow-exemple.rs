@@ -1,13 +1,7 @@
 use rs_flow::prelude::*;
 
-struct Nothing;
-impl Global for Nothing {
-    type Package = ();
-}
-
 #[derive(Inputs)]
 struct In; // A unique port of input
-
 #[derive(Outputs)]
 struct Out; // A unique port of output
 
@@ -16,14 +10,11 @@ struct Green;
 struct Blue;
 
 #[async_trait]
-impl<G> ComponentSchema<G> for Red
-where
-    G: Global<Package = ()>,
-{
+impl ComponentSchema<()> for Red {
     type Inputs = ();
     type Outputs = Out;
 
-    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<()>) -> Result<Next> {
         println!(
             "Runinng component Red({}) in {} cicle",
             ctx.id(),
@@ -36,14 +27,11 @@ where
 }
 
 #[async_trait]
-impl<G> ComponentSchema<G> for Green
-where
-    G: Global<Package = ()>,
-{
+impl ComponentSchema<()> for Green {
     type Inputs = In;
     type Outputs = ();
 
-    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<()>) -> Result<Next> {
         println!(
             "Runinng component Green({}) in {} cicle",
             ctx.id(),
@@ -57,14 +45,11 @@ where
 }
 
 #[async_trait]
-impl<G> ComponentSchema<G> for Blue
-where
-    G: Global<Package = ()>,
-{
+impl ComponentSchema<()> for Blue {
     type Inputs = In;
     type Outputs = Out;
 
-    async fn run(&self, ctx: &mut Ctx<G>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<()>) -> Result<Next> {
         println!(
             "Runinng component Blue({}) in {} cicle",
             ctx.id(),
@@ -118,7 +103,7 @@ async fn flow_example() -> Result<()> {
 
     println!("Initing Flow::run");
 
-    let _ = flow.run(Nothing).await?;
+    let _ = flow.run(Global::default()).await?;
 
     println!("Flow::run finished");
 
