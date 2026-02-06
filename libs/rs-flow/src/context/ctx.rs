@@ -201,24 +201,25 @@ impl<V> Ctx<V> {
             ports_ref[i] = &ports[i];
         }
 
-        let queues = self
-            .receive
-            .get_disjoint_mut(ports_ref)
-            .transpose()
-            .ok_or(Error::InvalidMultipleRecivedPorts {
-                component: self.id,
-                ports: ports.to_vec(),
-            })
-            .unwrap();
+        let queues = self.receive.get_disjoint_mut(ports_ref);
 
-        if queues.iter().any(|queue| queue.is_empty()) {
+        if queues
+            .iter()
+            .any(|queue| queue.as_ref().is_none_or(|q| q.is_empty()))
+        {
             return None;
         }
 
         let mut result = Vec::with_capacity(N);
-        for i in 0..N {
-            result.push(queues[i].get_next()?);
+        for queue in queues.into_iter() {
+            if let Some(queue) = queue {
+                let item = queue.get_next().expect("Queue is not empty by previus if");
+                result.push(item);
+            } else {
+                unreachable!("Already checked in previus if");
+            };
         }
+
         Some(
             result
                 .try_into()

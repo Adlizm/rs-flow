@@ -1,5 +1,3 @@
-#![feature(option_array_transpose)]
-
 mod flow;
 pub use flow::Flow;
 
