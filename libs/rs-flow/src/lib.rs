@@ -13,6 +13,11 @@ pub mod connection;
 /// Structs for ports of components and the traits [Inputs](crate::ports::Inputs) and [Outputs](crate::ports::Outputs)
 pub mod ports;
 
+#[cfg(feature = "testing")]
+pub mod testing;
+#[cfg(feature = "testing")]
+pub use testing::{Testing, TestingResult};
+
 /// Macros for derive [Inputs](crate::ports::Inputs) and [Outputs](crate::ports::Outputs) trait
 pub mod macros {
     pub use rs_flow_macros::{Inputs, Outputs};

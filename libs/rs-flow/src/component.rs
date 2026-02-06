@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use serde::Serialize;
 
 use crate::connection::Point;
 use crate::context::Ctx;
@@ -11,7 +12,7 @@ use crate::ports::{Inputs, Outputs, PortId, Ports};
 /// - If all component return <code> Ok([Next::Continue]) </code> flow continue to run for a more cicle
 /// - If any component return <code> Err(_) </code>, flow will be interrupted and return that Error
 ///
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default, Serialize)]
 pub enum Next {
     #[default]
     Continue,
