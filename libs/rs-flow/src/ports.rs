@@ -1,11 +1,10 @@
-use serde::{Deserialize, Serialize};
-
 pub type PortId = u16;
 
 ///
 /// One of the [Ports] of a [Component](crate::component::Component)
 ///
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone)]
 pub struct Port {
     /// [Port] id, indentify a Input/Outpot [Port] of a [Component](crate::component::Component)
     pub port: PortId,
@@ -43,7 +42,7 @@ impl Port {
 ///
 /// Set of [Port]'s, can represent all [Inputs] or [Outputs] of a [Component](crate::component::Component)
 ///
-#[derive(Debug, Serialize)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Ports(&'static [Port]);
 
 impl Ports {
@@ -111,16 +110,16 @@ impl Ports {
 /// }
 ///
 /// #[async_trait]
-/// impl ComponentSchema for WriteFile {
+/// impl<V> ComponentSchema<V> for WriteFile
+///     where V: AsRef<[u8]> + Send + Sync + Clone + 'static
+/// {
 ///     type Inputs = Bytes;
 ///     type Outputs = ();
 ///
-///     type Global = ();
-///
-///      async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
+///      async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next> {
 ///         if let Some(package) = ctx.receive(Bytes) {
-///             let bytes = package.get_bytes()?;
-///             std::fs::write(&self.filepath, &bytes)?;
+///             let bytes = package.as_ref();
+///             std::fs::write(&self.filepath, bytes)?;
 ///         }
 ///         Ok(Next::Continue)
 ///     }
@@ -168,21 +167,22 @@ impl Inputs for () {
 /// struct LoadEnv;
 ///
 /// #[async_trait]
-/// impl ComponentSchema for LoadEnv {
+/// impl<V> ComponentSchema<V> for LoadEnv
+///     where V: Clone + Send + Sync + 'static
+/// {
 ///     type Outputs = Out;
 ///     type Inputs = ();
-///     type Global = ();
 ///
-///     async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
-///         match load_envs() {
+///     async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next> {
+///         match load_envs::<V>() {
 ///             Ok(envs) => ctx.send(Out::Env, envs),
-///             Err(error) => ctx.send(Out::Error, error.into())
+///             Err(error) => ctx.send(Out::Error, error)
 ///         }
 ///         Ok(Next::Continue)
 ///     }
 /// }
 ///
-/// fn load_envs() -> std::result::Result<Package, String> {
+/// fn load_envs<V>() -> std::result::Result<V, V> {
 ///     // load env vars from a file .env em create a packge for them
 ///     todo!()
 /// }

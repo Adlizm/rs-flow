@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use serde::Serialize;
 
 use crate::connection::Point;
 use crate::context::Ctx;
@@ -12,7 +11,8 @@ use crate::ports::{Inputs, Outputs, PortId, Ports};
 /// - If all component return <code> Ok([Next::Continue]) </code> flow continue to run for a more cicle
 /// - If any component return <code> Err(_) </code>, flow will be interrupted and return that Error
 ///
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Default, Serialize)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum Next {
     #[default]
     Continue,
@@ -32,7 +32,6 @@ pub enum Next {
 ///
 /// Obs: If a [Component] does not have an [Inputs] port's, it will be selected
 ///      as the flow's entry point, and will be executed once in the first cicle.
-///
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum Type {
     #[default]
@@ -69,20 +68,24 @@ pub type Id = usize;
 ///     False
 /// }
 ///
+/// pub enum Any {
+///     Bool(bool),
+///     Number(i32),
+///     String(String),
+/// }
 /// struct FilterNumbers;
 ///
 /// #[async_trait]
-/// impl ComponentSchema for FilterNumbers {
+/// impl ComponentSchema<Any> for FilterNumbers {
 ///     type Inputs = In;
 ///     type Outputs = Out;
 ///
-///     type Global = ();
-///
-///     async fn run(&self, ctx: &mut Ctx<Self::Global>) -> Result<Next> {
+///     async fn run(&self, ctx: &mut Ctx<Any>) -> Result<Next> {
 ///         while let Some(package) = ctx.receive(In) {
-///             match package.is_number() {
-///                 true => ctx.send(Out::True, package),
-///                 false => ctx.send(Out::False, package),
+///             if let Any::Number(_) =  &package {
+///                 ctx.send(Out::True, package);
+///             } else {
+///                 ctx.send(Out::False, package);
 ///             }
 ///         }
 ///         Ok(Next::Continue)

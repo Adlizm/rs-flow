@@ -75,7 +75,7 @@ where
     ///
     /// By default `input` uses the component's associated `T::Inputs` type,
     /// so you can call `testing.input(T::Inputs::SomeInput, value)`.
-    pub fn input(&mut self, port: T::Inputs, value: V) -> &mut Self
+    pub fn input(mut self, port: T::Inputs, value: V) -> Self
     where
         T::Inputs: crate::ports::Inputs,
     {
@@ -88,7 +88,7 @@ where
     ///
     /// This method allows feeding inputs by port identifier directly:
     /// `testing.input_port_id(0, value)`.
-    pub fn input_port_id(&mut self, port_id: PortId, value: V) -> &mut Self {
+    pub fn input_port_id(mut self, port_id: PortId, value: V) -> Self {
         self.inputs.entry(port_id).or_default().push(value);
         self
     }
@@ -96,7 +96,7 @@ where
     /// Add a package `value` to the given input by `Port` struct.
     ///
     /// Convenience wrapper that extracts the `PortId` from a `Port`.
-    pub fn input_port(&mut self, port: crate::ports::Port, value: V) -> &mut Self {
+    pub fn input_port(self, port: Port, value: V) -> Self {
         self.input_port_id(port.port, value)
     }
 
@@ -106,7 +106,7 @@ where
     /// The global value type `G` must implement `Serialize` so we can produce a
     /// serialized representation for the test result. `G` must also satisfy
     /// the `Any + Send + Sync + 'static` bounds required by the runtime `Global`.
-    pub fn global<G>(&mut self, g: G) -> &mut Self
+    pub fn global<G>(mut self, g: G) -> Self
     where
         G: serde::Serialize + std::any::Any + Send + Sync + 'static,
     {
@@ -131,7 +131,7 @@ where
     ///
     /// Note: this executes the component in the same way the Flow does for a
     /// single component: a `Ctx` is created for it and its `run` is awaited.
-    pub async fn test(self) -> Result<TestingResult<V>>
+    pub async fn test(self) -> RunResult<TestingResult<V>>
     where
         // bounds needed to construct `Component::new` and to place values into queues
         V: Send + Clone + 'static,
@@ -168,9 +168,10 @@ where
         // component.data.run expects &mut Ctx<V>
         let run_result = component.data.run(&mut ctx).await?;
 
+        let Ctx { send, global, .. } = ctx;
         // After run, collect outputs from ctx.send (each output port -> Vec<V>)
         let mut outputs: HashMap<PortId, Vec<V>> = HashMap::new();
-        for (port, queue) in ctx.send.into_iter() {
+        for (port, queue) in send.into_iter() {
             // queue is VecDeque<V>, convert to Vec<V>
             let vec: Vec<V> = queue.into();
             outputs.insert(port, vec);
@@ -179,7 +180,7 @@ where
         // Build TestingResult
         // drop the context so the Arc<Global> held by `ctx` is released and we can
         // unwrap the original Arc into the owned Global value.
-        drop(ctx);
+        drop(global);
 
         let global = Arc::try_unwrap(global_arc)
             .expect("Global no have multiples references, because ctx already dropped");
@@ -295,7 +296,10 @@ impl<V> TestingResult<V> {
     where
         V: PartialEq + std::fmt::Debug,
     {
-        let actual = self.get_output_vec(port).unwrap_or(&Vec::new());
+        let actual = self
+            .get_output_vec(port)
+            .expect(&format!("{port} not found in tested component"));
+
         assert_eq!(
             actual, expected_vec,
             "output vec for port {} did not match",
@@ -305,7 +309,11 @@ impl<V> TestingResult<V> {
 
     /// Assert that the output for `port` has length `expected_len`.
     pub fn assert_output_len(&self, port: PortId, expected_len: usize) {
-        let len = self.get_output_slice(port).map(|s| s.len()).unwrap_or(0);
+        let len = self
+            .get_output_slice(port)
+            .expect(&format!("{port} not found in tested component"))
+            .len();
+
         assert_eq!(
             len, expected_len,
             "output length for port {} mismatch",
@@ -320,8 +328,9 @@ impl<V> TestingResult<V> {
     {
         let present = self
             .get_output_vec(port)
-            .map(|v| v.contains(value))
-            .unwrap_or(false);
+            .expect(&format!("{port} not found in tested component"))
+            .contains(value);
+
         assert!(
             present,
             "expected value not found in outputs for port {}",
@@ -337,6 +346,7 @@ impl<V> TestingResult<V> {
         let single = self
             .get_single_output(port)
             .expect("expected single output value");
+
         assert_eq!(
             single, expected,
             "single output for port {} did not match",

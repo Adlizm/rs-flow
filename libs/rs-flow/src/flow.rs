@@ -57,9 +57,6 @@ use crate::prelude::{Component, Id};
 /// struct Total {
 ///    value: i32
 /// }
-/// impl Global for Total {
-///     type Package = i32
-/// }
 ///
 ///
 /// #[derive(Inputs, Outputs)]
@@ -69,11 +66,11 @@ use crate::prelude::{Component, Id};
 /// struct Number(i32);
 ///
 /// #[async_trait]
-/// impl ComponentSchema<Total> for One {
+/// impl ComponentSchema<i32> for Number {
 ///     type Inputs = ();
 ///     type Outputs = DataNumber;
 ///
-///     async fn run(&self, ctx: &mut Ctx<Total>) -> Result<Next> {
+///     async fn run(&self, ctx: &mut Ctx<i32>) -> Result<Next> {
 ///         ctx.send(DataNumber, self.0);
 ///         Ok(Next::Continue)
 ///     }
@@ -82,19 +79,19 @@ use crate::prelude::{Component, Id};
 /// struct Sum;
 ///
 /// #[async_trait]
-/// impl ComponentSchema<Total> for Sum {
+/// impl ComponentSchema<i32> for Sum {
 ///     type Inputs = DataNumber;
 ///     type Outputs = ();
 ///
-///     async fn run(&self, ctx: &mut Ctx<Total>) -> Result<Next> {
+///     async fn run(&self, ctx: &mut Ctx<i32>) -> Result<Next> {
 ///         let mut sum = 0;
-///         while let Some(package) = ctx.receive(DataNumber) {
+///         while let Some(number) = ctx.receive(DataNumber) {
 ///             sum += number;
 ///         }
 ///
-///         ctx.with_mut_global(|total| {
+///         ctx.global.with_mut(|total: &mut Total| {
 ///             total.value += sum;
-///         })?;
+///         });
 ///
 ///         Ok(Next::Continue)
 ///     }
@@ -111,15 +108,17 @@ use crate::prelude::{Component, Id};
 ///     let connection_a = Connection::by(a.from(0), sum.to(0));
 ///     let connection_b = Connection::by(b.from(0), sum.to(0));
 ///
-///     let total = Flow::new()
+///     let global = Global::default().add(Total { value: 0 });
+///     let mut global = Flow::new()
 ///         .add_component(a).unwrap()
 ///         .add_component(b).unwrap()
 ///         .add_component(sum).unwrap()
 ///         .add_connection(connection_a).unwrap()
 ///         .add_connection(connection_b).unwrap()
-///         .run(Total { value: 0}).await
+///         .run(global).await
 ///         .unwrap();
 ///
+///     let total = global.remove::<Total>().unwrap();
 ///     assert!(total.value == 36);
 /// });
 ///

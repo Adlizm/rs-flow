@@ -23,7 +23,7 @@ rs-flow-macros = { path = "../rs-flow-macros", version = "0.3.0" }
 
 [features]
 default = []
-serde = ["serde", "serde_json"]
+serde = ["dep:serde", "dep:serde_json"]
 testing = ["serde"]
 
 [dev-dependencies]

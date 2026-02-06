@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
-
 use crate::component::Id;
 use crate::error::{Error, Result};
 use crate::ports::PortId;
@@ -11,7 +9,8 @@ use crate::ports::PortId;
 /// [Output](crate::ports::Outputs) [Port](crate::ports::Port) of a [Component](crate::component::Component)
 /// and a [Input](crate::ports::Inputs) [Port](crate::ports::Port) from the other [Component](crate::component::Component).
 ///
-#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Connection {
     pub from: Id,
     pub out_port: PortId,

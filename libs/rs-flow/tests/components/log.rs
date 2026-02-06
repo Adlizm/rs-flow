@@ -3,6 +3,7 @@ use rs_flow::prelude::*;
 use super::CounterLogs;
 
 #[derive(Inputs)]
+
 pub enum In {
     #[description("Message recieved to print in log")]
     Message,
