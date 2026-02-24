@@ -16,8 +16,8 @@ use serde::Serialize;
 use serde_json::Value as JsonValue;
 use std::sync::Arc;
 
-use crate::component::Component;
-use crate::context::{Ctx, Global};
+use crate::component::{Component, ComponentSchema};
+use crate::context::{Global, InnerCtx};
 use crate::error::RunResult;
 use crate::ports::{Inputs, Port, PortId};
 
@@ -25,7 +25,7 @@ use crate::ports::{Inputs, Port, PortId};
 ///
 /// Usage sketch:
 /// ```ignore
-/// // assuming `MyComp` implements `ComponentSchema<MyPackage>`
+/// // assuming `MyComp` implements `ComponentSchema`
 /// let mut testing = Testing::new(MyComp::default());
 /// testing
 ///     .input(MyInPort, pkg1)
@@ -35,15 +35,15 @@ use crate::ports::{Inputs, Port, PortId};
 /// let result = testing.test().await.unwrap();
 /// // inspect result.outputs and result.globals
 /// ```
-pub struct Testing<T, V>
+pub struct Testing<T>
 where
-    T: crate::component::ComponentSchema<V>,
+    T: ComponentSchema,
 {
     /// The component instance to test (moved into the test run).
     component: T,
 
     /// Map of input port id -> list of packages to feed into that input.
-    inputs: HashMap<PortId, Vec<V>>,
+    inputs: HashMap<PortId, Vec<T::Package>>,
 
     /// The context `Global` structure populated as `.global(...)` is called.
     context_global: Global,
@@ -54,10 +54,7 @@ where
     serialized_globals: HashMap<String, JsonValue>,
 }
 
-impl<T, V> Testing<T, V>
-where
-    T: crate::component::ComponentSchema<V>,
-{
+impl<T: ComponentSchema> Testing<T> {
     /// Create a new testing instance for the given component value.
     ///
     /// You provide the concrete component instance here. (This avoids requiring
@@ -75,7 +72,7 @@ where
     ///
     /// By default `input` uses the component's associated `T::Inputs` type,
     /// so you can call `testing.input(T::Inputs::SomeInput, value)`.
-    pub fn input(mut self, port: T::Inputs, value: V) -> Self
+    pub fn input(mut self, port: T::Inputs, value: T::Package) -> Self
     where
         T::Inputs: crate::ports::Inputs,
     {
@@ -88,7 +85,7 @@ where
     ///
     /// This method allows feeding inputs by port identifier directly:
     /// `testing.input_port_id(0, value)`.
-    pub fn input_port_id(mut self, port_id: PortId, value: V) -> Self {
+    pub fn input_port_id(mut self, port_id: PortId, value: T::Package) -> Self {
         self.inputs.entry(port_id).or_default().push(value);
         self
     }
@@ -96,7 +93,7 @@ where
     /// Add a package `value` to the given input by `Port` struct.
     ///
     /// Convenience wrapper that extracts the `PortId` from a `Port`.
-    pub fn input_port(self, port: Port, value: V) -> Self {
+    pub fn input_port(self, port: Port, value: T::Package) -> Self {
         self.input_port_id(port.port, value)
     }
 
@@ -131,12 +128,7 @@ where
     ///
     /// Note: this executes the component in the same way the Flow does for a
     /// single component: a `Ctx` is created for it and its `run` is awaited.
-    pub async fn test(self) -> RunResult<TestingResult<V>>
-    where
-        // bounds needed to construct `Component::new` and to place values into queues
-        V: Send + Clone + 'static,
-        T: crate::component::ComponentSchema<V>,
-    {
+    pub async fn test(self) -> RunResult<TestingResult<T::Package>> {
         // Build a `Component<V>` so we can create a Ctx for it.
         let component = Component::new(1, self.component);
 
@@ -144,7 +136,7 @@ where
         let global_arc = Arc::new(self.context_global);
 
         // Create context (Ctx) for this component
-        let mut ctx = Ctx::from(&component, Arc::clone(&global_arc));
+        let mut ctx = InnerCtx::from(&component, Arc::clone(&global_arc));
 
         // Populate receive queues with the provided input packages
         for (port, vec_values) in self.inputs {
@@ -168,12 +160,12 @@ where
         // component.data.run expects &mut Ctx<V>
         let run_result = component.data.run(&mut ctx).await?;
 
-        let Ctx { send, global, .. } = ctx;
+        let InnerCtx { send, global, .. } = ctx;
         // After run, collect outputs from ctx.send (each output port -> Vec<V>)
-        let mut outputs: HashMap<PortId, Vec<V>> = HashMap::new();
+        let mut outputs: HashMap<PortId, Vec<T::Package>> = HashMap::new();
         for (port, queue) in send.into_iter() {
             // queue is VecDeque<V>, convert to Vec<V>
-            let vec: Vec<V> = queue.into();
+            let vec: Vec<T::Package> = queue.into();
             outputs.insert(port, vec);
         }
 
@@ -359,10 +351,10 @@ impl<V> TestingResult<V> {
 ///
 /// We intentionally do not serialize the concrete component instance;
 /// instead we serialize the user-visible inputs and the serialized globals map.
-impl<T, V> Serialize for Testing<T, V>
+impl<T> Serialize for Testing<T>
 where
-    T: crate::component::ComponentSchema<V> + Serialize,
-    V: Serialize,
+    T: ComponentSchema + Serialize,
+    T::Package: Serialize,
 {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where

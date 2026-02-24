@@ -1,72 +1,27 @@
 use std::collections::{HashMap, VecDeque};
+use std::ops::Deref;
 use std::sync::Arc;
 
 use crate::context::global::Global;
+use crate::context::queue::ReceiveQueue;
 
 use crate::component::{Id, Type};
 use crate::error::Error;
 use crate::ports::{Inputs, Outputs, PortId};
-use crate::prelude::Component;
+use crate::prelude::{Component, ComponentSchema};
 
-pub(crate) enum ReceiveQueue<P> {
-    Closed,
-    Open(VecDeque<P>),
-}
-impl<P> ReceiveQueue<P> {
-    pub fn new() -> Self {
-        Self::Open(VecDeque::new())
-    }
-
-    pub fn close(&mut self) {
-        *self = Self::Closed
-    }
-
-    pub fn push_all(&mut self, packages: &mut VecDeque<P>) {
-        match self {
-            Self::Open(queue) => queue.append(packages),
-            Self::Closed => {}
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        match self {
-            Self::Open(queue) => queue.is_empty(),
-            Self::Closed => true,
-        }
-    }
-
-    pub fn get_next(&mut self) -> Option<P> {
-        match self {
-            Self::Open(queue) => queue.pop_front(),
-            Self::Closed => None,
-        }
-    }
-
-    pub fn get_all(&mut self) -> Vec<P> {
-        match self {
-            Self::Open(queue) => {
-                let mut packages = VecDeque::<P>::new();
-                std::mem::swap(queue, &mut packages);
-
-                packages.into()
-            }
-            Self::Closed => Vec::new(),
-        }
-    }
-
-    pub fn len(&self) -> usize {
-        match self {
-            Self::Open(queue) => queue.len(),
-            Self::Closed => 0,
-        }
-    }
+pub struct Ctx<C>
+where
+    C: ComponentSchema,
+{
+    inner: InnerCtx<C::Package>,
 }
 
 ///
 /// Provide a interface to send and recieve [Package]'s to/from others [Component]'s
 /// and access to read and modify the global data of the [Flow](crate::flow::Flow).
 ///
-pub struct Ctx<V> {
+pub(crate) struct InnerCtx<V> {
     pub(crate) id: Id,
     pub(crate) ty: Type,
     pub(crate) send: HashMap<PortId, VecDeque<V>>,
@@ -74,10 +29,10 @@ pub struct Ctx<V> {
     pub(crate) consumed: bool,
     pub(crate) cicle: u32,
 
-    pub global: Arc<Global>,
+    pub(crate) global: Arc<Global>,
 }
 
-impl<V> Ctx<V> {
+impl<V> InnerCtx<V> {
     pub(crate) fn from(component: &Component<V>, global: Arc<Global>) -> Self {
         let send = HashMap::from_iter(
             component
@@ -111,12 +66,7 @@ impl<V> Ctx<V> {
     /// # Panics
     ///
     /// Panic if recieve from a [Input](crate::ports::Inputs) Port that not exist in this [Component]
-    ///
-    pub fn close<I: Inputs>(&mut self, port: I) {
-        let port = port.into_port();
-        self.close_(port)
-    }
-    pub fn close_(&mut self, port: PortId) {
+    pub(crate) fn close(&mut self, port: PortId) {
         self.consumed = true;
 
         self.receive
@@ -130,17 +80,13 @@ impl<V> Ctx<V> {
     }
 
     ///
-    /// Recieve a [Package] from a [Port](crate::ports::Port)
+    /// Recieve a [Package](ComponentSchema::Package) from a [Port](crate::ports::Port)
     ///
     /// # Panics
     ///
-    /// Panic if recieve from a [Input](crate::ports::Inputs) Port that not exist in this [Component]
+    /// Panic if recieve from a Port that not exist in this [Component]
     ///
-    pub fn receive<I: Inputs>(&mut self, in_port: I) -> Option<V> {
-        let port = in_port.into_port();
-        self.receive_(port)
-    }
-    fn receive_(&mut self, port: PortId) -> Option<V> {
+    pub(crate) fn receive(&mut self, port: PortId) -> Option<V> {
         let package = self
             .receive
             .get_mut(&port)
@@ -161,13 +107,9 @@ impl<V> Ctx<V> {
     ///
     /// # Panics
     ///
-    /// Panic if recieve from a [Input](crate::ports::Inputs) Port that not exist in this [Component]
+    /// Panic if recieve from a Port that not exist in this [Component]
     ///
-    pub fn receive_all<I: Inputs>(&mut self, in_port: I) -> Vec<V> {
-        let port = in_port.into_port();
-        self.receive_all_(port)
-    }
-    fn receive_all_(&mut self, port: PortId) -> Vec<V> {
+    pub(crate) fn receive_all(&mut self, port: PortId) -> Vec<V> {
         self.consumed = true;
 
         self.receive
@@ -181,21 +123,17 @@ impl<V> Ctx<V> {
     }
 
     ///
-    /// Return the next [Package] in each port [Port](crate::ports::Port) provided
+    /// Return the next [Package](ComponentSchema::Package) in each port [Port](crate::ports::Port) provided
     ///
     /// Return [None] is one of ports not contain a [Package] for receive
     ///
     /// # Panics
     ///
-    /// Panic any of [Input](crate::ports::Inputs) Port not exist in this [Component]
+    /// Panic any of Port not exist in this [Component]
     ///
-    /// Panic any of [Input](crate::ports::Inputs) Port is repeated
+    /// Panic any of Port is repeated
     ///
-    pub fn receive_many<I: Inputs, const N: usize>(&mut self, ports: [I; N]) -> Option<[V; N]> {
-        let ports_ids: [PortId; N] = ports.map(|port| port.into_port());
-        self.receive_many_(ports_ids)
-    }
-    fn receive_many_<const N: usize>(&mut self, ports: [PortId; N]) -> Option<[V; N]> {
+    pub(crate) fn receive_many<const N: usize>(&mut self, ports: [PortId; N]) -> Option<[V; N]> {
         let mut ports_ref = [&0; N];
         for i in 0..N {
             ports_ref[i] = &ports[i];
@@ -228,20 +166,16 @@ impl<V> Ctx<V> {
         )
     }
 
-    /// Send a [Package] to a [Port](crate::ports::Port), if one [Component] is connected to this port than he
+    /// Send a [Package](ComponentSchema::Package) to a [Port](crate::ports::Port), if one [Component] is connected to this port than he
     /// can recieve that [Package] sent.
     ///
     /// If more than one components is connected in this port, each one recieve a copy of this [Package].
     ///
     /// # Panics
     ///
-    /// Panic if send to a [Output](crate::ports::Outputs) Port that not exist in this [Component]
+    /// Panic if send to a Port that not exist in this [Component]
     ///
-    pub fn send<O: Outputs, P: Into<V>>(&mut self, out_port: O, package: P) {
-        let port = out_port.into_port();
-        self.send_(port, package.into());
-    }
-    fn send_(&mut self, port: PortId, package: V) {
+    pub(crate) fn send(&mut self, port: PortId, package: V) {
         self.send
             .get_mut(&port)
             .ok_or(Error::OutPortNotFound {
@@ -252,7 +186,7 @@ impl<V> Ctx<V> {
             .push_front(package);
     }
 
-    /// Send all [Package]'s to a [Port](crate::ports::Port), if one [Component] is connected to this port than he
+    /// Send all [Package](ComponentSchema::Package)'s to a [Port](crate::ports::Port), if one [Component] is connected to this port than he
     /// can recieve that [Package]'s sent.
     ///
     /// If more than one components is connected in this port, each one recieve a copy of this [Package]'s.
@@ -261,11 +195,7 @@ impl<V> Ctx<V> {
     ///
     /// Panic if send to a [Output](crate::ports::Outputs) Port that not exist in this [Component]
     ///
-    pub fn send_all<O: Outputs>(&mut self, out_port: O, packages: Vec<V>) {
-        let port = out_port.into_port();
-        self.send_all_(port, packages);
-    }
-    fn send_all_(&mut self, port: PortId, packages: Vec<V>) {
+    pub(crate) fn send_all(&mut self, port: PortId, packages: Vec<V>) {
         let queue = self
             .send
             .get_mut(&port)
@@ -277,14 +207,104 @@ impl<V> Ctx<V> {
 
         queue.extend(packages.into_iter());
     }
+}
+
+impl<C: ComponentSchema> Ctx<C> {
+    ///
+    /// Close this [Port](crate::ports::Port) for receive more package.
+    ///
+    /// All packages in queue is drop, what means that for the next ctx.receive call
+    /// in this port always return None
+    ///
+    /// # Panics
+    ///
+    /// Panic if this [Component] not has a Input port.
+    ///
+    pub fn close(&mut self, port: C::Inputs) {
+        self.inner.close(port.into_port());
+    }
+
+    ///
+    /// Recieve a [Package](ComponentSchema::Package) from a [Port](crate::ports::Port)
+    ///
+    /// # Panics
+    ///
+    /// Panic if this [Component] not has a Input port.
+    ///
+    #[inline]
+    pub fn receive(&mut self, port: C::Inputs) -> Option<C::Package> {
+        self.inner.receive(port.into_port())
+    }
+
+    ///
+    /// Return all [Package]s from a [Port](crate::ports::Port)
+    ///
+    /// # Panics
+    ///
+    /// Panic if this [Component] not has a Input port.
+    ///
+    #[inline]
+    pub fn receive_all(&mut self, port: C::Inputs) -> Vec<C::Package> {
+        self.inner.receive_all(port.into_port())
+    }
+
+    ///
+    /// Return the next [Package](ComponentSchema::Package) in each port [Port](crate::ports::Port) provided
+    ///
+    /// Return [None] is one of ports not contain a [Package] for receive
+    ///
+    /// # Panics
+    ///
+    /// Panic if [Component] not has a Input port.
+    ///
+    /// Panic any of Port is repeated
+    ///
+    #[inline]
+    pub fn receive_many<const N: usize>(
+        &mut self,
+        ports: [C::Inputs; N],
+    ) -> Option<[C::Package; N]> {
+        self.inner.receive_many(ports.map(|p| p.into_port()))
+    }
+
+    /// Send a [Package](ComponentSchema::Package) to a [Port](crate::ports::Port), if one [Component] is connected to this port than he
+    /// can recieve that [Package] sent.
+    ///
+    /// If more than one components is connected in this port, each one recieve a copy of this [Package].
+    ///
+    /// # Panics
+    ///
+    /// Panic if this [Component](ComponentSchema) not has a Output port.
+    ///
+    pub fn send(&mut self, port: C::Outputs, package: C::Package) {
+        self.inner.send(port.into_port(), package);
+    }
+
+    /// Send all [Package](ComponentSchema::Package)'s to a [Port](crate::ports::Port), if one [Component] is connected to this port than he
+    /// can recieve that [Package]'s sent.
+    ///
+    /// If more than one components is connected in this port, each one recieve a copy of this [Package]'s.
+    ///
+    /// # Panics
+    ///
+    /// Panic if this [Component](ComponentSchema) not has a Output port.
+    ///
+    #[inline]
+    pub fn send_all(&mut self, port: C::Outputs, packages: Vec<C::Package>) {
+        self.inner.send_all(port.into_port(), packages);
+    }
+
+    pub fn global(&self) -> &Global {
+        self.inner.global.deref()
+    }
 
     #[inline]
     pub fn cicle(&self) -> u32 {
-        self.cicle
+        self.inner.cicle
     }
 
     #[inline]
     pub fn id(&self) -> usize {
-        self.id
+        self.inner.id
     }
 }

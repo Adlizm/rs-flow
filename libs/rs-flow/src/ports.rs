@@ -110,16 +110,14 @@ impl Ports {
 /// }
 ///
 /// #[async_trait]
-/// impl<V> ComponentSchema<V> for WriteFile
-///     where V: AsRef<[u8]> + Send + Sync + Clone + 'static
-/// {
+/// impl ComponentSchema for WriteFile {
 ///     type Inputs = Bytes;
 ///     type Outputs = ();
+///     type Package = Vec<u8>;
 ///
-///      async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next> {
-///         if let Some(package) = ctx.receive(Bytes) {
-///             let bytes = package.as_ref();
-///             std::fs::write(&self.filepath, bytes)?;
+///     async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
+///         if let Some(bytes) = ctx.receive(Bytes) {
+///             std::fs::write(&self.filepath, &bytes)?;
 ///         }
 ///         Ok(Next::Continue)
 ///     }
@@ -155,6 +153,10 @@ impl Inputs for () {
 /// to other [Component](crate::component::Component)
 ///
 /// ```
+/// use std::collections::HashMap;
+/// use std::sync::Arc;
+/// use std::any::Any;
+///
 /// use rs_flow::prelude::*;
 ///
 /// #[derive(Outputs)]
@@ -167,22 +169,21 @@ impl Inputs for () {
 /// struct LoadEnv;
 ///
 /// #[async_trait]
-/// impl<V> ComponentSchema<V> for LoadEnv
-///     where V: Clone + Send + Sync + 'static
-/// {
+/// impl ComponentSchema for LoadEnv {
 ///     type Outputs = Out;
 ///     type Inputs = ();
+///     type Package = Arc<dyn Any + Send + Sync>;
 ///
-///     async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next> {
-///         match load_envs::<V>() {
-///             Ok(envs) => ctx.send(Out::Env, envs),
-///             Err(error) => ctx.send(Out::Error, error)
+///     async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
+///         match load_envs() {
+///             Ok(envs) => ctx.send(Out::Env, Arc::new(envs)),
+///             Err(error) => ctx.send(Out::Error, Arc::new(error))
 ///         }
 ///         Ok(Next::Continue)
 ///     }
 /// }
 ///
-/// fn load_envs<V>() -> std::result::Result<V, V> {
+/// fn load_envs() -> std::result::Result<HashMap<String, String>, String> {
 ///     // load env vars from a file .env em create a packge for them
 ///     todo!()
 /// }

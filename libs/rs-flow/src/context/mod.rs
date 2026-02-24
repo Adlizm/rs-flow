@@ -6,13 +6,16 @@ use crate::connection::{Connections, Point};
 
 mod ctx;
 pub use ctx::Ctx;
+pub(crate) use ctx::InnerCtx;
+
+mod queue;
 
 mod global;
 pub use global::Global;
 
 pub(crate) struct Ctxs<V> {
     connections: Connections,
-    contexts: HashMap<Id, Ctx<V>>,
+    contexts: HashMap<Id, InnerCtx<V>>,
 }
 impl<V> Ctxs<V>
 where
@@ -27,12 +30,12 @@ where
             connections: connections.clone(),
             contexts: components
                 .iter()
-                .map(|(id, component)| (*id, Ctx::from(component, Arc::clone(global))))
+                .map(|(id, component)| (*id, InnerCtx::from(component, Arc::clone(global))))
                 .collect(),
         }
     }
 
-    pub(crate) fn borrow(&mut self, id: Id) -> Option<Ctx<V>> {
+    pub(crate) fn borrow(&mut self, id: Id) -> Option<InnerCtx<V>> {
         self.contexts.remove(&id)
     }
 
@@ -90,7 +93,7 @@ where
         }
     }
 
-    pub(crate) fn give_back(&mut self, ctx: Ctx<V>) {
+    pub(crate) fn give_back(&mut self, ctx: InnerCtx<V>) {
         self.contexts.insert(ctx.id, ctx);
     }
 

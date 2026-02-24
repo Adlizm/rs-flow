@@ -66,11 +66,12 @@ use crate::prelude::{Component, Id};
 /// struct Number(i32);
 ///
 /// #[async_trait]
-/// impl ComponentSchema<i32> for Number {
+/// impl ComponentSchema for Number {
 ///     type Inputs = ();
 ///     type Outputs = DataNumber;
+///     type Package = i32;
 ///
-///     async fn run(&self, ctx: &mut Ctx<i32>) -> Result<Next> {
+///     async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
 ///         ctx.send(DataNumber, self.0);
 ///         Ok(Next::Continue)
 ///     }
@@ -79,17 +80,18 @@ use crate::prelude::{Component, Id};
 /// struct Sum;
 ///
 /// #[async_trait]
-/// impl ComponentSchema<i32> for Sum {
+/// impl ComponentSchema for Sum {
 ///     type Inputs = DataNumber;
 ///     type Outputs = ();
+///     type Package = i32;
 ///
-///     async fn run(&self, ctx: &mut Ctx<i32>) -> Result<Next> {
+///     async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
 ///         let mut sum = 0;
 ///         while let Some(number) = ctx.receive(DataNumber) {
 ///             sum += number;
 ///         }
 ///
-///         ctx.global.with_mut(|total: &mut Total| {
+///         ctx.global().with_mut(|total: &mut Total| {
 ///             total.value += sum;
 ///         });
 ///

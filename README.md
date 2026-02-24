@@ -61,10 +61,10 @@ They use the `Testing` builder for isolated component runs and the `TestingResul
   <li>[x] Check if a connection creates a loop</li>
   <li>[x] Components can return { Continue or Break } to control flow execution</li>
   <li>[x] Create component types { Lazy or Eager } that define when a component will be executed</li>
-  <li>[x] Update Packages for additional types</li>
-  <li>[x] impl Serializer and Deserializer for Package</li>
   <li>[x] Check if a package has been consumed from queue (Loop detected)</li>
-  <li>[ ] Run flow components in parallel</li>
   <li>[x] Docs</li>
+  <li>[x] Testing</li>
+  <li>[x] Updating `ComponentSchema` trait</li>
+  <li>[x] Refactor `Ctx` interfaces for more safer usage</li>
+  <li>[ ] Create a features for optional run flow components in parallel</li>
 </ul>
-

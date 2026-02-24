@@ -19,11 +19,12 @@ impl Message {
 }
 
 #[async_trait]
-impl ComponentSchema<String> for Message {
+impl ComponentSchema for Message {
     type Inputs = ();
     type Outputs = Out;
+    type Package = String;
 
-    async fn run(&self, ctx: &mut Ctx<String>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
         ctx.send(Out::Message, self.message.clone());
         Ok(Next::Continue)
     }

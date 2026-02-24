@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 
 use crate::connection::Point;
-use crate::context::Ctx;
+use crate::context::{Ctx, InnerCtx};
 use crate::error::RunResult as Result;
 use crate::ports::{Inputs, Outputs, PortId, Ports};
 
@@ -68,19 +68,22 @@ pub type Id = usize;
 ///     False
 /// }
 ///
+/// struct FilterNumbers;
+///
+/// #[derive(Clone)]
 /// pub enum Any {
 ///     Bool(bool),
 ///     Number(i32),
 ///     String(String),
 /// }
-/// struct FilterNumbers;
 ///
 /// #[async_trait]
-/// impl ComponentSchema<Any> for FilterNumbers {
+/// impl ComponentSchema for FilterNumbers {
 ///     type Inputs = In;
 ///     type Outputs = Out;
-///
-///     async fn run(&self, ctx: &mut Ctx<Any>) -> Result<Next> {
+///     type Package = Any;
+
+///     async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
 ///         while let Some(package) = ctx.receive(In) {
 ///             if let Any::Number(_) =  &package {
 ///                 ctx.send(Out::True, package);
@@ -95,30 +98,27 @@ pub type Id = usize;
 /// ```
 ///
 #[async_trait]
-pub trait ComponentSchema<V>: Send + Sync + 'static {
+pub trait ComponentSchema: Send + Sync + Sized + 'static {
     type Inputs: Inputs;
     type Outputs: Outputs;
+    type Package: Clone + Send + Sync + 'static;
 
-    async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next>;
-
-    fn description() -> &'static str {
-        ""
-    }
+    async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next>;
 }
 
 #[async_trait]
 pub(crate) trait ComponentRun<V>: Send + Sync + 'static {
-    async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next>;
+    async fn run(&self, ctx: &mut InnerCtx<V>) -> Result<Next>;
 }
 
 #[async_trait]
-impl<T: Sized, V> ComponentRun<V> for T
-where
-    V: Send,
-    T: ComponentSchema<V>,
-{
+impl<T: ComponentSchema> ComponentRun<T::Package> for T {
     #[inline(always)]
-    async fn run(&self, ctx: &mut Ctx<V>) -> Result<Next> {
+    async fn run(&self, ctx: &mut InnerCtx<T::Package>) -> Result<Next> {
+        // SAFETY: `Ctx<Self>` is a wrapper of `InnerCtx<Self::Package>` so both have the same size and aligment.
+        //          And until in this block both have the same lifetime
+        let ctx = unsafe { std::mem::transmute(ctx) };
+
         self.run(ctx).await
     }
 }
@@ -144,11 +144,12 @@ where
 /// struct Nothing;
 ///
 /// #[async_trait]
-/// impl ComponentSchema<()> for Nothing {
+/// impl ComponentSchema for Nothing {
 ///     type Inputs = In;
 ///     type Outputs = Out;
+///     type Package = ();
 ///
-///     async fn run(&self, ctx: &mut Ctx<()>) -> Result<Next> {
+///     async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
 ///         return Ok(Next::Continue);
 ///     }
 /// }
@@ -177,7 +178,7 @@ where
     /// Create a component with Type::Lazy
     pub fn new<T>(id: Id, data: T) -> Self
     where
-        T: ComponentSchema<V>,
+        T: ComponentSchema<Package = V>,
     {
         Self {
             id,
@@ -190,7 +191,7 @@ where
     /// Create a component with Type::Eager
     pub fn eager<T>(id: Id, data: T) -> Self
     where
-        T: ComponentSchema<V>,
+        T: ComponentSchema<Package = V>,
     {
         Self {
             id,

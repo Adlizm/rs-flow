@@ -10,11 +10,12 @@ struct Green;
 struct Blue;
 
 #[async_trait]
-impl ComponentSchema<()> for Red {
+impl ComponentSchema for Red {
     type Inputs = ();
     type Outputs = Out;
+    type Package = ();
 
-    async fn run(&self, ctx: &mut Ctx<()>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
         println!(
             "Runinng component Red({}) in {} cicle",
             ctx.id(),
@@ -27,11 +28,12 @@ impl ComponentSchema<()> for Red {
 }
 
 #[async_trait]
-impl ComponentSchema<()> for Green {
+impl ComponentSchema for Green {
     type Inputs = In;
     type Outputs = ();
+    type Package = ();
 
-    async fn run(&self, ctx: &mut Ctx<()>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
         println!(
             "Runinng component Green({}) in {} cicle",
             ctx.id(),
@@ -45,11 +47,12 @@ impl ComponentSchema<()> for Green {
 }
 
 #[async_trait]
-impl ComponentSchema<()> for Blue {
+impl ComponentSchema for Blue {
     type Inputs = In;
     type Outputs = Out;
+    type Package = ();
 
-    async fn run(&self, ctx: &mut Ctx<()>) -> Result<Next> {
+    async fn run(&self, ctx: &mut Ctx<Self>) -> Result<Next> {
         println!(
             "Runinng component Blue({}) in {} cicle",
             ctx.id(),
